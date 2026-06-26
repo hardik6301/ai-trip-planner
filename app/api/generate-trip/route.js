@@ -90,7 +90,7 @@ Requirements:
     // Log the error for server-side debugging
     console.error("Error generating trip:", error);
 
-    // Return a 500 error with a descriptive message
+    // Return a 500 error with descriptive message
     return NextResponse.json(
       { error: "Failed to generate trip itinerary", details: error.message },
       { status: 500 }
