@@ -35,7 +35,7 @@ export async function POST(request) {
     // Initialize the Google Generative AI client with the API key
     const genAI = new GoogleGenerativeAI(apiKey);
     // Get the gemini-1.5-flash model instance for fast text generation
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Build the prompt instructing Gemini to return a structured trip itinerary as JSON
     const prompt = `You are a travel planning expert. Create a detailed ${days}-day trip itinerary for ${destination}.
