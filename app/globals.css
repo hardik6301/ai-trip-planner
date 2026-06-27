@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
+/* Stitch WanderAI design tokens — deep indigo primary, warm coral accent */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fcf9f8;
+  --foreground: #1c1b1b;
+  --primary: #15157d;
+  --primary-container: #2e3192;
+  --primary-fixed: #e1e0ff;
+  --on-primary-fixed: #04006d;
+  --on-primary-container: #9da1ff;
+  --secondary: #a53b22;
+  --secondary-container: #fe7d5e;
+  --secondary-fixed: #ffdad2;
+  --tertiary: #242831;
+  --tertiary-fixed: #dfe2ee;
+  --surface: #fcf9f8;
+  --surface-container: #f0eded;
+  --surface-container-low: #f6f3f2;
+  --surface-variant: #e5e2e1;
+  --on-surface: #1c1b1b;
+  --on-surface-variant: #464652;
+  --outline-variant: #c7c5d4;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-surface: var(--surface);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-variant: var(--surface-variant);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-outline-variant: var(--outline-variant);
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --spacing-margin-desktop: 48px;
+  --spacing-margin-mobile: 20px;
+  --spacing-gutter-desktop: 24px;
+  --max-width-container: 1280px;
+  --shadow-itinerary: 0 4px 20px rgba(46, 49, 146, 0.06);
+  --shadow-itinerary-hover: 0 12px 32px rgba(46, 49, 146, 0.12);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Base page styles — Inter font and warm off-white background */
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, #ffffff 0%, #f0f3ff 100%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Material Symbols icon font used throughout the Stitch design */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+/* Glassmorphism panel for navbar and sticky layers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Hero bottom fade from transparent to surface color */
+.hero-gradient {
+  background: linear-gradient(
+    to bottom,
+    rgba(252, 249, 248, 0) 0%,
+    rgba(252, 249, 248, 1) 100%
+  );
+}
+
+/* Ambient indigo shadow for itinerary cards (Stitch Level 1 elevation) */
+.itinerary-card-shadow {
+  box-shadow: var(--shadow-itinerary);
+}
+
+/* Lifted shadow on hover (Stitch Level 2 elevation) */
+.itinerary-card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.itinerary-card-hover:hover {
+  box-shadow: var(--shadow-itinerary-hover);
+  transform: translateY(-2px);
 }
