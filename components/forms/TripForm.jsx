@@ -122,6 +122,7 @@ export default function TripForm({
           type="submit"
           disabled={loading}
           loading={loading}
+          fullWidth
           icon={<span className="material-symbols-outlined">bolt</span>}
         >
           {loading ? "Generating..." : "Generate My Itinerary"}

@@ -160,6 +160,7 @@ export default function SignupPage() {
                 type="submit"
                 disabled={loading}
                 loading={loading}
+                fullWidth
                 className="mt-0"
               >
                 {loading ? "Creating account..." : "Create Account"}

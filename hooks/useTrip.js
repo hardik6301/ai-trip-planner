@@ -33,17 +33,26 @@ export function useTrip() {
   const [tripData, setTripData] = useState(null);
 
   // Submit handler — calls API then navigates to /results with trip data
-  async function generateTrip(e) {
+  // Optional overrides let the home page compose vibe/budget from extra UI fields
+  async function generateTrip(e, overrides = {}) {
     e.preventDefault();
     setError("");
     setTripData(null);
     setLoading(true);
 
+    const payload = {
+      destination,
+      days: overrides.days ?? days,
+      budget: overrides.budget ?? budget,
+      vibe: overrides.vibe ?? vibe,
+      travelMonth: overrides.travelMonth ?? null,
+    };
+
     try {
       const response = await fetch("/api/generate-trip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ destination, days, budget, vibe }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -52,7 +61,15 @@ export function useTrip() {
         throw new Error(data.error || data.details || "Something went wrong");
       }
 
-      const storedTrip = { ...data, tripMeta: { days, budget, vibe } };
+      const storedTrip = {
+        ...data,
+        tripMeta: {
+          days: payload.days,
+          budget: payload.budget,
+          vibe: payload.vibe,
+          travelMonth: payload.travelMonth,
+        },
+      };
 
       // Persist trip data for the results page (includes form meta for display)
       sessionStorage.setItem(TRIP_STORAGE_KEY, JSON.stringify(storedTrip));

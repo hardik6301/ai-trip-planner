@@ -35,3 +35,17 @@ export function formatBudget(str) {
 export function getDayLabel(index) {
   return `Day ${index + 1}`;
 }
+
+/**
+ * Returns a formatted created date like "Jun 27, 2026".
+ * @param {string} dateStr - ISO date string
+ * @returns {string}
+ */
+export function formatTripDate(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}

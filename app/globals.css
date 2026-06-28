@@ -1,10 +1,30 @@
+/**
+ * Travora global styles — design tokens, Inter typography, and utility classes.
+ * Source of truth for navy/orange brand colors used across all UI components.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* Stitch Travora design tokens — deep indigo primary, warm coral accent */
+/* ─── Travora brand tokens (WanderAI palette: #2E3192 navy + #FE7D5E coral) ─── */
 :root {
+  --navy: #2e3192;
+  --orange: #fe7d5e;
+  --navy-light: #f0f3ff;
+  --orange-light: #ffdad2;
+
+  /* Warm surfaces from original WanderAI design */
   --background: #fcf9f8;
   --foreground: #1c1b1b;
-  --primary: #15157d;
+  --surface: #fcf9f8;
+  --surface-container: #f0eded;
+  --surface-container-low: #f6f3f2;
+  --on-surface: #1c1b1b;
+  --on-surface-variant: #464652;
+  --outline-variant: #c7c5d4;
+
+  /* Semantic aliases used across components */
+  --primary: #2e3192;
   --primary-container: #2e3192;
   --primary-fixed: #e1e0ff;
   --on-primary-fixed: #04006d;
@@ -14,16 +34,18 @@
   --secondary-fixed: #ffdad2;
   --tertiary: #242831;
   --tertiary-fixed: #dfe2ee;
-  --surface: #fcf9f8;
-  --surface-container: #f0eded;
-  --surface-container-low: #f6f3f2;
   --surface-variant: #e5e2e1;
-  --on-surface: #1c1b1b;
-  --on-surface-variant: #464652;
-  --outline-variant: #c7c5d4;
+
+  --shadow-card: 0 4px 20px rgba(46, 49, 146, 0.06);
+  --shadow-card-hover: 0 12px 32px rgba(46, 49, 146, 0.12);
+  --shadow-modal: 0 24px 48px -12px rgba(46, 49, 146, 0.2);
 }
 
 @theme inline {
+  --color-navy: var(--navy);
+  --color-orange: var(--orange);
+  --color-navy-light: var(--navy-light);
+  --color-orange-light: var(--orange-light);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -43,24 +65,24 @@
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
   --color-outline-variant: var(--outline-variant);
-  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
-  --spacing-margin-desktop: 48px;
-  --spacing-margin-mobile: 20px;
-  --spacing-gutter-desktop: 24px;
+  --font-sans: var(--font-inter, "Inter"), "Inter", ui-sans-serif, system-ui, sans-serif;
   --max-width-container: 1280px;
-  --shadow-itinerary: 0 4px 20px rgba(46, 49, 146, 0.06);
-  --shadow-itinerary-hover: 0 12px 32px rgba(46, 49, 146, 0.12);
+  --shadow-itinerary: var(--shadow-card);
+  --shadow-itinerary-hover: var(--shadow-card-hover);
 }
 
-/* Base page styles — Inter font and warm off-white background */
+/* Base body — Inter, cool slate background, readable text */
 body {
-  background: linear-gradient(135deg, #ffffff 0%, #f0f3ff 100%);
+  background: linear-gradient(135deg, #ffffff 0%, var(--navy-light) 100%);
   background-attachment: fixed;
   color: var(--foreground);
-  font-family: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-inter, "Inter"), "Inter", ui-sans-serif, system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Material Symbols icon font used throughout the Stitch design */
+/* Material Symbols — icon font used across Travora screens */
 .material-symbols-outlined {
   font-family: "Material Symbols Outlined";
   font-weight: normal;
@@ -76,14 +98,30 @@ body {
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
-/* Glassmorphism panel for navbar and sticky layers */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* Decorative watermark on feature cards (64px, faint — not 24px default) */
+.feature-watermark-icon {
+  font-family: "Material Symbols Outlined";
+  font-size: 64px !important;
+  line-height: 1;
+  color: rgba(157, 161, 255, 0.22);
+  font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 48;
 }
 
-/* Hero bottom fade from transparent to surface color */
+/* Small icons inside 48×48 feature card headers */
+.feature-card-icon {
+  font-size: 24px !important;
+  line-height: 1;
+}
+
+/* Glass panel — navbar and sticky headers (Stitch backdrop blur) */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Hero bottom fade into page background */
 .hero-gradient {
   background: linear-gradient(
     to bottom,
@@ -92,17 +130,59 @@ body {
   );
 }
 
-/* Ambient indigo shadow for itinerary cards (Stitch Level 1 elevation) */
+/* Card elevation — Level 1 from Stitch design system */
 .itinerary-card-shadow {
-  box-shadow: var(--shadow-itinerary);
+  box-shadow: var(--shadow-card);
 }
 
-/* Lifted shadow on hover (Stitch Level 2 elevation) */
+/* Card hover lift — Level 2 elevation */
 .itinerary-card-hover {
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .itinerary-card-hover:hover {
-  box-shadow: var(--shadow-itinerary-hover);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-2px);
+}
+
+/* Toast slide-in animation */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.25s ease-out forwards;
+}
+
+/* Modal fade-in */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-enter {
+  animation: modal-in 0.2s ease-out forwards;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter,
+  .modal-enter,
+  .itinerary-card-hover {
+    animation: none;
+    transition: none;
+  }
 }

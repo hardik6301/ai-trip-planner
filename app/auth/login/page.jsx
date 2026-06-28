@@ -184,6 +184,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             loading={loading}
+            fullWidth
             className="mt-0"
           >
             {loading ? "Signing in..." : "Sign In"}

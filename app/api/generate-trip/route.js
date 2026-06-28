@@ -8,8 +8,8 @@ export async function POST(request) {
   try {
     // Parse the JSON body from the incoming request
     const body = await request.json();
-    // Extract the destination city or region from the request body
-    const { destination, days, budget, vibe } = body;
+    // Extract trip fields from the request body
+    const { destination, days, budget, vibe, travelMonth } = body;
 
     // Validate that all required fields are present
     if (!destination || !days || !budget || !vibe) {
@@ -32,12 +32,17 @@ export async function POST(request) {
       );
     }
 
+    // Optional seasonal context when the user picked a travel month
+    const monthContext = travelMonth
+      ? `\nThe user is planning to travel in ${travelMonth}. Factor in weather, festivals, and seasonal tips for that month.`
+      : "";
+
     // Build the prompt instructing Gemini to return a structured trip itinerary as JSON
     const prompt = `You are a travel planning expert. Create a detailed ${days}-day trip itinerary for ${destination}.
 
 Travel preferences:
 - Budget: ${budget}
-- Vibe: ${vibe}
+- Vibe: ${vibe}${monthContext}
 
 Return ONLY valid JSON with no markdown, no code fences, and no extra text. Use this exact structure:
 
