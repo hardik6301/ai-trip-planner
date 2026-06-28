@@ -1,8 +1,17 @@
 "use client";
 
-// React hooks for trip data, save feedback, and client-side hydration
+/**
+ * Travora results page — displays the AI-generated itinerary after form submission.
+ * Reads trip data from sessionStorage; uses shared layout, Badge, and LoadingSpinner components.
+ */
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import Badge from "@/components/ui/Badge";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { TRIP_STORAGE_KEY } from "@/constants/tripOptions";
 
 // Unsplash images rotated per activity slot for visual variety
 const ACTIVITY_IMAGES = [
@@ -39,7 +48,7 @@ export default function ResultsPage() {
   // Load trip data from sessionStorage on mount
   useEffect(() => {
     setMounted(true);
-    const stored = sessionStorage.getItem("wanderaiTrip");
+    const stored = sessionStorage.getItem(TRIP_STORAGE_KEY);
     if (stored) {
       setTripData(JSON.parse(stored));
     }
@@ -67,7 +76,8 @@ export default function ResultsPage() {
   // Loading state while waiting for client hydration
   if (!mounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface text-on-surface-variant">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface text-on-surface-variant">
+        <LoadingSpinner />
         Loading your itinerary...
       </div>
     );
@@ -98,31 +108,7 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-surface text-on-surface font-sans">
-      {/* Glass navbar — consistent with home page */}
-      <header className="glass-panel fixed top-0 left-0 z-50 w-full border-b border-outline-variant/30 shadow-sm">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-4 md:px-12">
-          <Link
-            href="/"
-            className="text-2xl font-semibold tracking-tight text-primary"
-          >
-            WanderAI
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="#"
-              className="text-base text-on-surface-variant transition-colors hover:text-secondary"
-            >
-              My Trips
-            </Link>
-            <button
-              type="button"
-              className="px-4 py-2 text-base text-primary transition-colors hover:text-secondary"
-            >
-              Sign In
-            </button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="pt-16">
         {/* Destination hero — full-width image with gradient overlay */}
@@ -226,12 +212,7 @@ export default function ResultsPage() {
                   </h2>
                   <div className="flex flex-wrap gap-2">
                     {tripData.packingEssentials.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full bg-secondary-container/10 px-4 py-1.5 text-sm font-medium text-secondary"
-                      >
-                        {item}
-                      </span>
+                      <Badge key={item}>{item}</Badge>
                     ))}
                   </div>
                 </div>
@@ -358,28 +339,7 @@ export default function ResultsPage() {
         </section>
       </main>
 
-      {/* Footer — matches home page */}
-      <footer className="flex w-full flex-col items-center justify-between gap-4 bg-surface-container px-5 py-12 md:flex-row md:px-12">
-        <div className="flex flex-col items-center gap-4 md:items-start">
-          <span className="text-sm font-semibold text-primary">WanderAI</span>
-          <p className="text-xs text-on-surface-variant">
-            © 2024 WanderAI. All rights reserved.
-          </p>
-        </div>
-        <div className="flex gap-8">
-          {["Privacy Policy", "Terms of Service", "Contact", "About Us"].map(
-            (link) => (
-              <a
-                key={link}
-                href="#"
-                className="text-xs text-on-surface-variant transition-colors hover:text-secondary"
-              >
-                {link}
-              </a>
-            )
-          )}
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

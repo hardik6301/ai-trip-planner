@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "WanderAI — AI Travel Planner",
+  title: "Travora — AI Travel Planner",
   description: "Plan your perfect trip with AI-powered itineraries",
 };
 

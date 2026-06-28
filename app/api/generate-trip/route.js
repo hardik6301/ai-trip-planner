@@ -1,7 +1,7 @@
-// Import the Google Generative AI SDK to communicate with the Gemini API
-import { GoogleGenerativeAI } from "@google/generative-ai";
 // Import NextResponse to send structured HTTP responses from the API route
 import { NextResponse } from "next/server";
+// Import shared Gemini client initialization from lib
+import { getGeminiModel } from "@/lib/gemini";
 
 // Handle POST requests to generate a trip itinerary
 export async function POST(request) {
@@ -20,22 +20,17 @@ export async function POST(request) {
       );
     }
 
-    // Read the Gemini API key from environment variables
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Get the configured Gemini model instance from the shared lib
+    const model = getGeminiModel();
 
     // Ensure the API key is configured before making a request
-    if (!apiKey) {
+    if (!model) {
       // Return a 500 error if the API key is not set
       return NextResponse.json(
         { error: "GEMINI_API_KEY is not configured" },
         { status: 500 }
       );
     }
-
-    // Initialize the Google Generative AI client with the API key
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Get the gemini-1.5-flash model instance for fast text generation
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Build the prompt instructing Gemini to return a structured trip itinerary as JSON
     const prompt = `You are a travel planning expert. Create a detailed ${days}-day trip itinerary for ${destination}.
