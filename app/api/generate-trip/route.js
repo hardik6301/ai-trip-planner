@@ -52,9 +52,10 @@ Return ONLY valid JSON with no markdown, no code fences, and no extra text. Use 
     {
       "day": 1,
       "theme": "Arrival & Exploration",
-      "morning": { "activity": "...", "place": "...", "cost": "..." },
-      "afternoon": { "activity": "...", "place": "...", "cost": "..." },
-      "evening": { "activity": "...", "place": "...", "cost": "..." },
+      "morning": { "activity": "...", "place": "...", "cost": "...", "description": "2-3 sentence description", "duration": "2 hrs", "category": "Easy" },
+      "afternoon": { "activity": "...", "place": "...", "cost": "...", "description": "2-3 sentence description", "duration": "3 hrs", "category": "Moderate" },
+      "evening": { "activity": "...", "place": "...", "cost": "...", "description": "2-3 sentence description", "duration": "2 hrs", "category": "Dinner" },
+      "summary": "One sentence overview of the day theme",
       "tips": "one local tip for this day"
     }
   ],

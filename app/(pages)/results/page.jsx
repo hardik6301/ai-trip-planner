@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Bookmark, Check } from "lucide-react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TripItineraryView from "@/components/trips/TripItineraryView";
 import { TRIP_STORAGE_KEY } from "@/constants/tripOptions";
@@ -75,23 +76,25 @@ export default function ResultsPage() {
     }
   }
 
-  // Shared save button UI for sidebar and mobile
-  function renderSaveButton(className = "") {
+  // Save button — rendered inside the hero budget card
+  function renderSaveButton() {
     const isSaving = saveState === "saving";
     const isSaved = saveState === "saved";
 
     return (
-      <div className={className}>
+      <div>
         <button
           type="button"
           onClick={handleSave}
           disabled={isSaving || isSaved}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-secondary-container py-3 text-sm font-semibold text-white transition-all hover:bg-secondary active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#F97316] py-3 text-sm font-semibold text-white hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <span className="material-symbols-outlined text-[20px]">
-            {isSaved ? "check" : "bookmark"}
-          </span>
-          {isSaving ? "Saving..." : isSaved ? "✓ Saved!" : "Save to My Trips"}
+          {isSaved ? (
+            <Check className="h-[18px] w-[18px]" />
+          ) : (
+            <Bookmark className="h-[18px] w-[18px]" />
+          )}
+          {isSaving ? "Saving..." : isSaved ? "Saved!" : "Save to My Trips"}
         </button>
 
         {saveState === "auth_error" && (
@@ -120,7 +123,7 @@ export default function ResultsPage() {
   // Loading state while waiting for client hydration
   if (!mounted) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface text-on-surface-variant">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F8FAFC] text-[#64748B]">
         <LoadingSpinner />
         Loading your itinerary...
       </div>
@@ -151,28 +154,22 @@ export default function ResultsPage() {
   return (
     <div className="min-h-screen bg-surface text-on-surface font-sans">
       <TripItineraryView
-          tripData={tripData}
-          saveButton={renderSaveButton("mt-6")}
-          footerExtra={
-            <>
-              {/* Mobile save button */}
-              <div className="lg:hidden">{renderSaveButton()}</div>
-
-              {/* Back to planner link */}
-              <div className="text-center">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-secondary"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    arrow_back
-                  </span>
-                  Plan another trip
-                </Link>
-              </div>
-            </>
-          }
-        />
+        tripData={tripData}
+        saveButton={renderSaveButton()}
+        footerExtra={
+          <div className="text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary-container"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                arrow_back
+              </span>
+              Plan another trip
+            </Link>
+          </div>
+        }
+      />
     </div>
   );
 }
