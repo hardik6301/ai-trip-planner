@@ -87,12 +87,12 @@ export default function ResultsPage() {
           type="button"
           onClick={handleSave}
           disabled={isSaving || isSaved}
-          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#F97316] py-3 text-sm font-semibold text-white hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSaved ? (
-            <Check className="h-[18px] w-[18px]" />
+            <Check className="h-4 w-4" />
           ) : (
-            <Bookmark className="h-[18px] w-[18px]" />
+            <Bookmark className="h-4 w-4" />
           )}
           {isSaving ? "Saving..." : isSaved ? "Saved!" : "Save to My Trips"}
         </button>

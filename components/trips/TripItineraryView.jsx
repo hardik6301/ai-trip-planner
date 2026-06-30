@@ -5,7 +5,7 @@
  * Used on /results and /trip/[id]. Functionality preserved; layout is fixed.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Banknote,
@@ -153,6 +153,61 @@ function formatDayLabel(n) {
   return `DAY ${n}`;
 }
 
+/** Split long AI budget strings into clean card-friendly parts */
+function formatBudgetDisplay(estimate, metaBudget, vibe) {
+  const raw = String(estimate || "—").trim();
+
+  let exclusionNote = "Excludes international flights";
+  const parenMatch = raw.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    const inner = parenMatch[1].trim();
+    exclusionNote = /^exclud/i.test(inner)
+      ? inner.charAt(0).toUpperCase() + inner.slice(1)
+      : `Excludes ${inner.toLowerCase()}`;
+  }
+
+  const core = raw.replace(/\([^)]*\)/g, "").trim();
+  const shortExclusion = exclusionNote.toLowerCase().includes("flight")
+    ? "Excludes flights"
+    : exclusionNote;
+
+  const rangeParts = core.split(/\s*[-–—]\s*/).filter(Boolean);
+  if (rangeParts.length >= 2) {
+    const mainAmount = `${rangeParts[0].trim()} – ${rangeParts[1].trim()}`;
+    const tier =
+      vibe ||
+      (metaBudget && !/^[\₹$€£]/.test(metaBudget) ? metaBudget : null);
+    return {
+      mainAmount,
+      rangeLine: null,
+      subtitle: tier ? `${tier} • ${shortExclusion}` : exclusionNote,
+      heroShort: mainAmount,
+      progressTitle: mainAmount,
+    };
+  }
+
+  const mainAmount = core || "—";
+  const tier =
+    vibe || (metaBudget && !/^[\₹$€£\d]/.test(metaBudget) ? metaBudget : null);
+
+  return {
+    mainAmount,
+    rangeLine: null,
+    subtitle: tier ? `${tier} • ${shortExclusion}` : exclusionNote,
+    heroShort: mainAmount,
+    progressTitle: metaBudget && /^[\₹$€£]/.test(metaBudget)
+      ? `${mainAmount} of ${metaBudget}`
+      : mainAmount,
+  };
+}
+
+const BUDGET_INFO_ITEMS = [
+  "AI estimated cost based on your trip preferences",
+  "Includes hotels, activities, food and local transport",
+  "Excludes flights, shopping, visa and insurance",
+  "Prices may vary depending on season and availability",
+];
+
 export default function TripItineraryView({
   tripData,
   saveButton = null,
@@ -170,8 +225,15 @@ export default function TripItineraryView({
   const placeCount = countPlaces(tripData.days);
   const budget = tripData.totalBudgetEstimate || tripMeta?.budget || "₹42,500";
   const budgetCap = tripMeta?.budget || "₹50,000";
+  const budgetDisplay = formatBudgetDisplay(
+    budget,
+    budgetCap,
+    tripMeta?.vibe
+  );
 
   const [activeDay, setActiveDay] = useState(1);
+  const [budgetInfoOpen, setBudgetInfoOpen] = useState(false);
+  const budgetInfoRef = useRef(null);
   const [expandedDays, setExpandedDays] = useState(() => {
     const initial = new Set();
     tripData.days?.forEach((d, i) => {
@@ -179,6 +241,17 @@ export default function TripItineraryView({
     });
     return initial;
   });
+
+  useEffect(() => {
+    if (!budgetInfoOpen) return;
+    function handleClickOutside(e) {
+      if (budgetInfoRef.current && !budgetInfoRef.current.contains(e.target)) {
+        setBudgetInfoOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [budgetInfoOpen]);
 
   function scrollToDay(dayNumber) {
     setActiveDay(dayNumber);
@@ -215,31 +288,70 @@ export default function TripItineraryView({
     <div className="bg-[#F8FAFC] pb-16">
       <div className="mx-auto max-w-[1400px] px-6 pt-6">
         {/* ─── Hero ─── */}
-        <section className="relative h-[320px] overflow-hidden rounded-[20px] shadow-soft">
+        <section className="relative h-[400px] overflow-hidden rounded-[20px] shadow-soft md:h-[420px]">
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url('${DEFAULT_HERO}')` }}
             role="img"
             aria-label={destination}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
 
           {/* Budget card — top right */}
-          <div className="absolute top-6 right-6 w-[300px] rounded-[20px] bg-white p-6 shadow-soft">
-            <p className="text-[11px] font-semibold tracking-[0.12em] text-[#64748B] uppercase">
-              Estimated Budget
+          <div className="absolute top-6 right-6 w-[272px] rounded-[22px] bg-white p-5 shadow-[0_8px_32px_rgba(15,23,42,0.14)]">
+            <div
+              ref={budgetInfoRef}
+              className="relative flex items-center gap-1"
+            >
+              <p className="text-[10px] font-semibold tracking-[0.1em] text-[#64748B] uppercase">
+                Estimated Budget
+              </p>
+              <button
+                type="button"
+                onClick={() => setBudgetInfoOpen((o) => !o)}
+                className="cursor-pointer rounded-full p-0.5 text-[#94A3B8] transition-colors hover:bg-[#F1F5F9] hover:text-[#64748B]"
+                aria-label="Budget estimate details"
+                aria-expanded={budgetInfoOpen}
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+              {budgetInfoOpen && (
+                <div className="absolute top-full right-0 z-20 mt-2 w-[248px] rounded-xl border border-[#E2E8F0]/80 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.12)]">
+                  <p className="mb-2 text-xs font-semibold text-[#0F172A]">
+                    About this estimate
+                  </p>
+                  <ul className="space-y-2">
+                    {BUDGET_INFO_ITEMS.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-start gap-2 text-[11px] leading-snug text-[#64748B]"
+                      >
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#F97316]" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <p className="mt-1 text-2xl font-bold leading-tight tracking-tight text-[#0F172A]">
+              {budgetDisplay.mainAmount}
             </p>
-            <p className="mt-1 flex items-center gap-2 text-[30px] font-bold leading-none text-[#0F172A]">
-              {budget}
-              <Info className="h-[18px] w-[18px] text-[#94A3B8]" />
+            {budgetDisplay.rangeLine && (
+              <p className="mt-0.5 text-xs font-medium text-[#64748B]">
+                Range: {budgetDisplay.rangeLine}
+              </p>
+            )}
+            <p className="mt-1 text-[11px] leading-snug text-[#64748B]">
+              {budgetDisplay.subtitle}
             </p>
             <div className="mt-4 space-y-2">
               {saveButton ?? (
                 <button
                   type="button"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F97316] py-3 text-sm font-semibold text-white hover:bg-[#ea580c]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
                 >
-                  <Bookmark className="h-[18px] w-[18px]" />
+                  <Bookmark className="h-4 w-4" />
                   Save to My Trips
                 </button>
               )}
@@ -247,16 +359,16 @@ export default function TripItineraryView({
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-medium text-[#0F172A] hover:bg-[#F8FAFC]"
+                  className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
                 >
-                  <Share2 className="h-4 w-4" />
+                  <Share2 className="h-3.5 w-3.5" />
                   Share
                 </button>
                 <button
                   type="button"
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-medium text-[#0F172A] hover:bg-[#F8FAFC]"
+                  className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
                 >
-                  <FileText className="h-4 w-4" />
+                  <FileText className="h-3.5 w-3.5" />
                   PDF
                 </button>
               </div>
@@ -264,43 +376,43 @@ export default function TripItineraryView({
           </div>
 
           {/* Title block — bottom left, clear of budget card */}
-          <div className="absolute right-[320px] bottom-6 left-6 text-white">
+          <div className="absolute right-[300px] bottom-8 left-6 text-white">
             <div className="mb-3 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-xs font-medium backdrop-blur-md">
                 <Sparkles className="h-3.5 w-3.5" />
                 {heroBadge}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-xs font-medium backdrop-blur-md">
                 <Zap className="h-3.5 w-3.5" />
                 2 / 3 Regenerations Used
               </span>
             </div>
-            <h1 className="text-[32px] font-bold leading-tight tracking-tight md:text-[40px]">
+            <h1 className="text-[32px] font-bold leading-tight tracking-tight drop-shadow-sm md:text-[40px]">
               {title}
             </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/95">
               {tripData.bestTimeToVisit && (
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 shrink-0" />
+                  <Calendar className="h-4 w-4 shrink-0 opacity-90" />
                   {tripData.bestTimeToVisit}
                 </span>
               )}
               <span className="flex items-center gap-1.5">
-                <Wallet className="h-4 w-4 shrink-0" />
-                Est. {budget}
+                <Wallet className="h-4 w-4 shrink-0 opacity-90" />
+                Est. {budgetDisplay.heroShort}
               </span>
-              <span className="hidden text-white/50 sm:inline">·</span>
+              <span className="hidden text-white/40 sm:inline">·</span>
               <span>{dayCount} Days</span>
-              <span className="text-white/50">·</span>
+              <span className="text-white/40">·</span>
               <span>{activityCount} Activities</span>
-              <span className="text-white/50">·</span>
+              <span className="text-white/40">·</span>
               <span>{placeCount} Destinations</span>
             </div>
           </div>
         </section>
 
-        {/* ─── Stats row — compact, reference-matched ─── */}
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {/* ─── Stats row ─── */}
+        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard
             emoji="⛅"
             label="Weather"
@@ -327,7 +439,7 @@ export default function TripItineraryView({
           <StatCard
             emoji="💰"
             label="Budget Progress"
-            title={`${budget} of ${budgetCap}`}
+            title={budgetDisplay.progressTitle}
             progress={85}
           />
         </div>
@@ -335,13 +447,13 @@ export default function TripItineraryView({
         {/* ─── Packing essentials ─── */}
         {tripData.packingEssentials?.length > 0 && (
           <div className="mt-8">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-[#0F172A]">
                 Packing Essentials
               </h2>
               <button
                 type="button"
-                className="cursor-pointer text-sm font-medium text-[#1E3A8A]"
+                className="cursor-pointer text-sm font-medium text-[#1E3A8A] transition-colors hover:text-[#1E40AF]"
               >
                 View all
               </button>
@@ -352,9 +464,9 @@ export default function TripItineraryView({
                 return (
                   <span
                     key={item}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-4 py-2 text-xs font-medium text-[#0F172A] shadow-soft"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#BFDBFE]/60 bg-[#EFF6FF] px-4 py-2.5 text-xs font-medium text-[#0F172A] transition-all hover:border-[#93C5FD]/80 hover:bg-[#DBEAFE] hover:shadow-sm"
                   >
-                    <PackIcon className="h-3.5 w-3.5 text-[#64748B]" />
+                    <PackIcon className="h-4 w-4 shrink-0 text-[#3B82F6]" />
                     {item}
                   </span>
                 );
@@ -691,19 +803,19 @@ function StatCard({
       : "bg-blue-50 text-blue-600";
 
   return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-3 shadow-soft">
+    <div className="rounded-xl border border-[#E2E8F0]/50 bg-white px-4 py-4 shadow-soft transition-shadow duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)]">
       {/* Header: icon + label on one line */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         {emoji ? (
-          <span className="text-[15px] leading-none" aria-hidden="true">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center text-base leading-none" aria-hidden="true">
             {emoji}
           </span>
         ) : (
           Icon && (
             <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${iconWrap}`}
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${iconWrap}`}
             >
-              <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+              <Icon className="h-4 w-4" strokeWidth={2} />
             </span>
           )
         )}
@@ -711,24 +823,22 @@ function StatCard({
       </div>
 
       {tripStats ? (
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] font-semibold text-[#0F172A] sm:text-xs">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-[#0F172A]">
           <span>{tripStats.days} Days</span>
           <span>{tripStats.activities} Activities</span>
           <span>{tripStats.places} Places</span>
         </div>
       ) : (
-        <div className="mt-1">
+        <div className="mt-2">
           <p
             className={`font-bold leading-tight text-[#0F172A] ${
-              progress != null
-                ? "line-clamp-2 text-[11px] sm:text-xs"
-                : "text-sm"
+              progress != null ? "line-clamp-2 text-xs" : "text-sm"
             }`}
           >
             {title}
           </p>
           {subtitle && (
-            <p className="mt-0.5 text-[11px] leading-snug text-[#64748B]">
+            <p className="mt-1 text-xs leading-snug text-[#64748B]">
               {subtitle}
             </p>
           )}
@@ -736,10 +846,10 @@ function StatCard({
       )}
 
       {progress != null && (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#E2E8F0]">
             <div
-              className="h-full rounded-full bg-emerald-500"
+              className="h-full rounded-full bg-emerald-500 transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
