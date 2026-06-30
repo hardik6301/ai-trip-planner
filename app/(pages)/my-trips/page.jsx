@@ -1,85 +1,403 @@
+"use client";
+
 /**
- * My Trips dashboard — server component that lists all saved trips for the
- * logged-in user fetched directly from Supabase.
+ * My Trips — premium dashboard for saved AI itineraries.
+ * Client-side fetch from Supabase; card grid with cover images and filters.
  */
 
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import TripCard from "@/components/trips/TripCard";
+import { useRouter } from "next/navigation";
+import { Pencil, Plus, Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import {
+  capitalizeDestination,
+  formatBudget,
+  formatTripDate,
+} from "@/utils/formatTrip";
+import { getPlaceImage, PLACE_IMAGE_FALLBACK } from "@/utils/placeImages";
 
-export default async function MyTripsPage() {
-  // Create a server Supabase client with the user's session cookies
-  const supabase = await createClient();
+const FREE_TRIP_LIMIT = 5;
 
-  // Verify the user is authenticated
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+const FILTER_TABS = [
+  { id: "all", label: "All Trips" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "past", label: "Past" },
+  { id: "drafts", label: "Drafts" },
+];
 
-  // Redirect to login if no session (middleware also protects this route)
-  if (!user) {
-    redirect("/auth/login");
+/** True when itinerary JSON is missing or has no day entries */
+function isDraftTrip(trip) {
+  const days = trip.itinerary?.days;
+  return !trip.itinerary || !Array.isArray(days) || days.length === 0;
+}
+
+/** Upcoming = saved itineraries; Past = older than 6 months */
+function isPastTrip(trip) {
+  if (isDraftTrip(trip)) return false;
+  const created = new Date(trip.created_at);
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  return created < sixMonthsAgo;
+}
+
+function isUpcomingTrip(trip) {
+  return !isDraftTrip(trip) && !isPastTrip(trip);
+}
+
+/** Cover image URL — destination keyword match via placeImages helper */
+function getTripCoverUrl(destination) {
+  return getPlaceImage(destination, "landmark", destination);
+}
+
+/** Display budget from itinerary estimate or stored budget field */
+function getTripBudget(trip) {
+  return (
+    trip.itinerary?.totalBudgetEstimate ||
+    formatBudget(trip.budget) ||
+    "Budget TBD"
+  );
+}
+
+export default function MyTripsPage() {
+  const router = useRouter();
+
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [deletingId, setDeletingId] = useState(null);
+  const [isPro, setIsPro] = useState(false);
+
+  /** Load trips for the authenticated user */
+  const fetchTrips = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    const supabase = createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.replace("/auth/login");
+      return;
+    }
+
+    setIsPro(
+      user.user_metadata?.plan === "pro" ||
+        user.app_metadata?.is_pro === true
+    );
+
+    const { data, error: fetchError } = await supabase
+      .from("trips")
+      .select("id, destination, days, budget, vibe, itinerary, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (fetchError) {
+      setError("Could not load your trips. Please try again.");
+      setTrips([]);
+    } else {
+      setTrips(data ?? []);
+    }
+
+    setLoading(false);
+  }, [router]);
+
+  useEffect(() => {
+    fetchTrips();
+  }, [fetchTrips]);
+
+  /** Filter trips by active pill tab */
+  const filteredTrips = useMemo(() => {
+    switch (activeFilter) {
+      case "upcoming":
+        return trips.filter(isUpcomingTrip);
+      case "past":
+        return trips.filter(isPastTrip);
+      case "drafts":
+        return trips.filter(isDraftTrip);
+      default:
+        return trips;
+    }
+  }, [trips, activeFilter]);
+
+  const showLimitBanner = !isPro && trips.length >= FREE_TRIP_LIMIT;
+
+  /** Delete trip via API and remove from local state */
+  async function handleDelete(tripId, destination) {
+    if (!window.confirm("Delete this trip?")) return;
+
+    setDeletingId(tripId);
+    try {
+      const response = await fetch(`/api/delete-trip?id=${tripId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Delete failed");
+
+      setTrips((prev) => prev.filter((t) => t.id !== tripId));
+    } catch {
+      window.alert(`Failed to delete ${destination}. Please try again.`);
+    } finally {
+      setDeletingId(null);
+    }
   }
-
-  // Fetch all trips belonging to this user, newest first
-  const { data: trips, error } = await supabase
-    .from("trips")
-    .select("id, destination, days, budget, vibe, itinerary, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching trips:", error);
-  }
-
-  const displayName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email?.split("@")[0];
-
-  const hasTrips = trips && trips.length > 0;
 
   return (
-    <div className="mx-auto max-w-[1280px] px-5 pb-16 pt-8 md:px-12">
-      {/* Dashboard header */}
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">
-          My Trips
-        </h1>
-        <p className="mt-2 text-on-surface-variant">
-          Welcome back, {displayName}
-        </p>
-      </div>
-
-        {hasTrips ? (
-          /* Saved trip cards grid */
-          <div className="grid gap-6">
-            {trips.map((trip) => (
-              <TripCard key={trip.id} trip={trip} />
-            ))}
-          </div>
-        ) : (
-          /* Empty state — no saved trips yet */
-          <div className="itinerary-card-shadow rounded-xl border border-outline-variant/30 bg-white p-10 text-center">
-            <span className="material-symbols-outlined mb-4 text-5xl text-primary">
-              luggage
-            </span>
-            <h2 className="text-xl font-semibold text-on-surface">
-              No saved trips yet
-            </h2>
-            <p className="mx-auto mt-2 max-w-md text-on-surface-variant">
-              Generate an AI itinerary on the home page, then save it here to
-              access it anytime.
+    <div className="min-h-screen bg-[#F8FAFC] pb-16">
+      <div className="mx-auto max-w-[1400px] px-6 pt-8">
+        {/* ─── Trip limit banner (free users at 5 trips) ─── */}
+        {showLimitBanner && (
+          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-[#9A3412]">
+              You&apos;ve reached your free limit of {FREE_TRIP_LIMIT} trips.
+              Upgrade to Pro for unlimited trips.
             </p>
             <Link
-              href="/"
-              className="mt-6 inline-flex items-center justify-center rounded-lg bg-secondary-container px-6 py-3 font-semibold text-white transition-colors hover:bg-secondary"
+              href="/pricing"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#F97316] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
             >
-              Plan a New Trip
+              Upgrade to Pro
             </Link>
           </div>
         )}
+
+        {/* ─── Page header ─── */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-[#0F172A] md:text-4xl">
+              My Trips
+            </h1>
+            <p className="mt-2 text-[#64748B]">
+              Manage your AI-crafted adventures
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#ea580c]"
+          >
+            <Plus className="h-4 w-4" />
+            Plan New Trip
+          </Link>
+        </div>
+
+        {/* ─── Filter tabs ─── */}
+        <div className="mb-8 flex flex-wrap gap-2">
+          {FILTER_TABS.map((tab) => {
+            const isActive = activeFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveFilter(tab.id)}
+                className={`cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-[#0F172A] text-white shadow-sm"
+                    : "border border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#CBD5E1] hover:text-[#0F172A]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ─── Error state ─── */}
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* ─── Loading skeleton grid ─── */}
+        {loading && (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="overflow-hidden rounded-xl border border-[#E2E8F0]/60 bg-white shadow-md"
+              >
+                <div className="h-[200px] animate-pulse bg-[#E2E8F0]" />
+                <div className="space-y-3 p-4">
+                  <div className="h-5 w-2/3 animate-pulse rounded bg-[#E2E8F0]" />
+                  <div className="h-4 w-1/2 animate-pulse rounded bg-[#E2E8F0]" />
+                  <div className="h-9 animate-pulse rounded-lg bg-[#E2E8F0]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ─── Empty state ─── */}
+        {!loading && !error && trips.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <span className="text-8xl" role="img" aria-label="Map">
+              🗺️
+            </span>
+            <h2 className="mt-6 text-2xl font-bold text-[#0F172A]">
+              No trips planned yet
+            </h2>
+            <p className="mt-2 max-w-sm text-[#64748B]">
+              Start planning your first AI adventure
+            </p>
+            <Link
+              href="/"
+              className="mt-8 inline-flex items-center gap-2 rounded-lg bg-[#F97316] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
+            >
+              Plan Your First Trip →
+            </Link>
+          </div>
+        )}
+
+        {/* ─── Filtered empty (has trips but none in tab) ─── */}
+        {!loading &&
+          !error &&
+          trips.length > 0 &&
+          filteredTrips.length === 0 && (
+            <div className="rounded-xl border border-[#E2E8F0] bg-white px-6 py-12 text-center shadow-sm">
+              <p className="text-[#64748B]">
+                No trips in this category yet.
+              </p>
+            </div>
+          )}
+
+        {/* ─── Trip cards grid ─── */}
+        {!loading && filteredTrips.length > 0 && (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredTrips.map((trip) => (
+              <TripGridCard
+                key={trip.id}
+                trip={trip}
+                deleting={deletingId === trip.id}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+/** Single trip card with cover image, badges, and actions */
+function TripGridCard({ trip, deleting, onDelete }) {
+  const destination = capitalizeDestination(trip.destination);
+  const budget = getTripBudget(trip);
+  const draft = isDraftTrip(trip);
+  const coverSrc = getTripCoverUrl(trip.destination);
+
+  const [imgSrc, setImgSrc] = useState(coverSrc);
+
+  return (
+    <article className="group overflow-hidden rounded-xl border border-[#E2E8F0]/60 bg-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+      {/* ─── Cover image area ─── */}
+      <div className="relative h-[200px] w-full overflow-hidden">
+        {draft ? (
+          /* Draft placeholder — dashed border style from reference */
+          <div className="flex h-full w-full flex-col items-center justify-center border-b border-dashed border-[#CBD5E1] bg-[#F1F5F9]">
+            <Pencil className="h-10 w-10 text-[#94A3B8]" strokeWidth={1.5} />
+            <span className="mt-2 text-xs font-medium text-[#64748B]">
+              Draft — no cover yet
+            </span>
+          </div>
+        ) : (
+          <img
+            src={imgSrc}
+            alt={destination}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+            onError={() => setImgSrc(PLACE_IMAGE_FALLBACK)}
+          />
+        )}
+
+        {/* AI Crafted badge — top left */}
+        {!draft && (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-[#0F172A]/85 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+            <Sparkles className="h-3 w-3 text-[#F97316]" />
+            AI Crafted
+          </span>
+        )}
+
+        {/* Edit + delete icon buttons — top right */}
+        <div className="absolute top-3 right-3 flex gap-2">
+          <Link
+            href={`/trip/${trip.id}`}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white"
+            aria-label={`Edit ${destination}`}
+          >
+            ✏️
+          </Link>
+          <button
+            type="button"
+            onClick={() => onDelete(trip.id, destination)}
+            disabled={deleting}
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white disabled:opacity-60"
+            aria-label={`Delete ${destination}`}
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Card body ─── */}
+      <div className="p-4">
+        {/* Title + budget row */}
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="text-xl font-bold text-[#0F172A]">{destination}</h2>
+          {!draft && (
+            <span className="shrink-0 text-sm font-bold text-[#C2410C]">
+              {budget.length > 18 ? `${budget.slice(0, 16)}…` : budget}
+            </span>
+          )}
+          {draft && (
+            <span className="shrink-0 text-xs italic text-[#64748B]">
+              Draft
+            </span>
+          )}
+        </div>
+
+        {/* Days + vibe badges */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-xs font-medium text-[#0F172A]">
+            {trip.days} Days
+          </span>
+          {trip.vibe && (
+            <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-xs font-medium text-[#64748B]">
+              {trip.vibe}
+            </span>
+          )}
+        </div>
+
+        {/* Budget detail line */}
+        {!draft && (
+          <p className="mt-2 text-sm text-[#64748B]">{budget}</p>
+        )}
+
+        {/* Saved date */}
+        <p className="mt-1 text-xs text-[#94A3B8]">
+          Saved {formatTripDate(trip.created_at)}
+        </p>
+
+        {/* CTA button */}
+        {draft ? (
+          <Link
+            href="/"
+            className="mt-4 flex w-full items-center justify-center rounded-lg border border-[#E2E8F0] bg-white py-2.5 text-sm font-semibold text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
+          >
+            Continue Planning
+          </Link>
+        ) : (
+          <Link
+            href={`/trip/${trip.id}`}
+            className="mt-4 flex w-full items-center justify-center rounded-lg bg-[#0F172A] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B]"
+          >
+            View Itinerary →
+          </Link>
+        )}
+      </div>
+    </article>
   );
 }

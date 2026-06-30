@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, Mountain, Sun } from "lucide-react";
+import { ChevronDown, Mountain, Sparkles, Sun } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 function NavLink({ href, label, isActive, onClick }) {
@@ -200,10 +200,11 @@ export default function Navbar() {
 
               <button
                 type="button"
-                onClick={() => router.push("/auth/signup")}
-                className="cursor-pointer rounded-lg bg-[#1E3A8A] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1e40af]"
+                onClick={() => router.push("/pricing")}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
               >
-                Start Free
+                <Sparkles className="h-4 w-4" />
+                Upgrade to Pro
               </button>
             </div>
           )}
