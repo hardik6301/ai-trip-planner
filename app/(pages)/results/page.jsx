@@ -11,17 +11,21 @@ import { Bookmark, Check } from "lucide-react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TripItineraryView from "@/components/trips/TripItineraryView";
 import { TRIP_STORAGE_KEY } from "@/constants/tripOptions";
+import { createClient } from "@/lib/supabase/client";
+import { isProUser } from "@/lib/userPlan";
 
 export default function ResultsPage() {
   // Parsed itinerary from sessionStorage after home page submission
   const [tripData, setTripData] = useState(null);
   // Avoid hydration mismatch before sessionStorage is read
   const [mounted, setMounted] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   // Save button states: idle | saving | saved | auth_error | error
   const [saveState, setSaveState] = useState("idle");
   // Optional server error detail for debugging save failures
   const [saveErrorDetail, setSaveErrorDetail] = useState("");
+  const [savedTripId, setSavedTripId] = useState(null);
 
   // Load trip data from sessionStorage on mount (supports legacy key names)
   useEffect(() => {
@@ -33,7 +37,16 @@ export default function ResultsPage() {
     if (stored) {
       setTripData(JSON.parse(stored));
     }
+
+    createClient()
+      .auth.getUser()
+      .then(({ data: { user } }) => setIsPro(isProUser(user)));
   }, []);
+
+  function handleTripDataChange(next) {
+    setTripData(next);
+    sessionStorage.setItem(TRIP_STORAGE_KEY, JSON.stringify(next));
+  }
 
   // Save the current itinerary to Supabase via the API
   async function handleSave() {
@@ -70,6 +83,7 @@ export default function ResultsPage() {
         return;
       }
 
+      setSavedTripId(data.trip?.id ?? null);
       setSaveState("saved");
     } catch {
       setSaveState("error");
@@ -155,6 +169,10 @@ export default function ResultsPage() {
     <div className="min-h-screen bg-surface text-on-surface font-sans">
       <TripItineraryView
         tripData={tripData}
+        tripId={savedTripId}
+        shareTripId={savedTripId}
+        onTripDataChange={handleTripDataChange}
+        isPro={isPro}
         saveButton={renderSaveButton()}
         footerExtra={
           <div className="text-center">

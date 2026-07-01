@@ -6,12 +6,13 @@
  * the POST /api/generate-trip call, and sessionStorage persistence.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   TRAVEL_VIBES,
   DEFAULT_DAYS,
-  TRIP_STORAGE_KEY,
+  PENDING_TRIP_REQUEST_KEY,
+  TRIP_GENERATION_ERROR_KEY,
 } from "@/constants/tripOptions";
 
 export function useTrip() {
@@ -25,20 +26,25 @@ export function useTrip() {
   const [budget, setBudget] = useState("");
   // Form field — selected travel vibe
   const [vibe, setVibe] = useState(TRAVEL_VIBES[0]);
-  // True while the generate-trip API call is in progress
-  const [loading, setLoading] = useState(false);
   // Error message shown below the form on API failure
   const [error, setError] = useState("");
   // Holds the parsed itinerary JSON returned by the API
   const [tripData, setTripData] = useState(null);
 
-  // Submit handler — calls API then navigates to /results with trip data
-  // Optional overrides let the home page compose vibe/budget from extra UI fields
+  // Surface errors returned from /generating when user navigates back home
+  useEffect(() => {
+    const message = sessionStorage.getItem(TRIP_GENERATION_ERROR_KEY);
+    if (message) {
+      setError(message);
+      sessionStorage.removeItem(TRIP_GENERATION_ERROR_KEY);
+    }
+  }, []);
+
+  // Submit handler — stores payload and navigates to /generating for Stitch loading UI
   async function generateTrip(e, overrides = {}) {
     e.preventDefault();
     setError("");
     setTripData(null);
-    setLoading(true);
 
     const payload = {
       destination,
@@ -48,41 +54,8 @@ export function useTrip() {
       travelMonth: overrides.travelMonth ?? null,
     };
 
-    try {
-      const response = await fetch("/api/generate-trip", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || data.details || "Something went wrong");
-      }
-
-      const storedTrip = {
-        ...data,
-        tripMeta: {
-          days: payload.days,
-          budget: payload.budget,
-          vibe: payload.vibe,
-          travelMonth: payload.travelMonth,
-        },
-      };
-
-      // Persist trip data for the results page (includes form meta for display)
-      sessionStorage.setItem(TRIP_STORAGE_KEY, JSON.stringify(storedTrip));
-      setTripData(storedTrip);
-
-      router.push("/results");
-    } catch (err) {
-      setError(
-        err.message || "Failed to generate itinerary. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
+    sessionStorage.setItem(PENDING_TRIP_REQUEST_KEY, JSON.stringify(payload));
+    router.push("/generating");
   }
 
   return {
@@ -94,7 +67,6 @@ export function useTrip() {
     setBudget,
     vibe,
     setVibe,
-    loading,
     error,
     tripData,
     generateTrip,

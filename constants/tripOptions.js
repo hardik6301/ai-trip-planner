@@ -24,3 +24,12 @@ export const DEFAULT_DAYS = 7;
 
 /** sessionStorage key used to pass generated trip data to the results page */
 export const TRIP_STORAGE_KEY = "wanderaiTrip";
+
+/** Pending API payload while the generating page runs the Gemini request */
+export const PENDING_TRIP_REQUEST_KEY = "travoraPendingTripRequest";
+
+/** Error message passed back to home if generation fails on /generating */
+export const TRIP_GENERATION_ERROR_KEY = "travoraTripGenerationError";
+
+/** Free tier: max day regenerations allowed per trip */
+export const FREE_REGENERATIONS_PER_TRIP = 3;

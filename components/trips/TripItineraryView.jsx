@@ -37,6 +37,16 @@ import {
 } from "lucide-react";
 import { capitalizeDestination } from "@/utils/formatTrip";
 import { getPlaceImage, PLACE_IMAGE_FALLBACK } from "@/utils/placeImages";
+import { FREE_REGENERATIONS_PER_TRIP } from "@/constants/tripOptions";
+import { useToast } from "@/components/ui/Toast";
+import {
+  buildTripShareMessage,
+  buildTripShareText,
+  getTripShareUrl,
+  openWhatsAppShare,
+  sanitizeTripId,
+  shareTripNative,
+} from "@/utils/shareTrip";
 
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80";
@@ -213,6 +223,11 @@ export default function TripItineraryView({
   saveButton = null,
   footerExtra = null,
   heroBadge = "AI Optimized Itinerary",
+  tripId = null,
+  shareTripId = null,
+  onTripDataChange = null,
+  isPro = false,
+  canRegenerate = true,
 }) {
   const { tripMeta } = tripData;
   const destination = capitalizeDestination(tripData.destination);
@@ -241,6 +256,17 @@ export default function TripItineraryView({
     });
     return initial;
   });
+  const [regeneratingDay, setRegeneratingDay] = useState(null);
+  const [regenerateError, setRegenerateError] = useState("");
+  const [shareBusy, setShareBusy] = useState(false);
+
+  const { showToast } = useToast();
+  const activeShareId = sanitizeTripId(shareTripId ?? tripId);
+  const canShare = Boolean(activeShareId);
+
+  const regenerationsUsed = tripData.regenerationsUsed ?? 0;
+  const atRegenerationLimit =
+    canRegenerate && !isPro && regenerationsUsed >= FREE_REGENERATIONS_PER_TRIP;
 
   useEffect(() => {
     if (!budgetInfoOpen) return;
@@ -270,17 +296,130 @@ export default function TripItineraryView({
     });
   }
 
+  function getSharePayload() {
+    const url = getTripShareUrl(activeShareId);
+    const shareText = buildTripShareText({
+      destination: title,
+      dayCount,
+    });
+    const whatsappText = buildTripShareMessage({
+      destination: title,
+      dayCount,
+      url,
+    });
+    return {
+      url,
+      shareText,
+      whatsappText,
+      title: `${title} | Travora`,
+    };
+  }
+
   async function handleShare() {
-    const url = typeof window !== "undefined" ? window.location.href : "";
-    const text = `Check out my ${title} itinerary on Travora!`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
-      } catch {
-        /* cancelled */
+    if (!canShare || shareBusy) return;
+
+    setShareBusy(true);
+    try {
+      const { url, shareText, title: shareTitle } = getSharePayload();
+      const result = await shareTripNative({
+        title: shareTitle,
+        text: shareText,
+        url,
+      });
+      showToast(
+        result === "shared"
+          ? "Trip shared!"
+          : "Link copied! Paste it to share your trip.",
+        "success"
+      );
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        showToast("Could not share trip. Try again.", "error");
       }
-    } else if (navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  function handleWhatsAppShare() {
+    if (!canShare || shareBusy) return;
+
+    const { whatsappText } = getSharePayload();
+    openWhatsAppShare(whatsappText);
+    showToast("Opening WhatsApp…", "info");
+  }
+
+  async function handleRegenerateDay(dayNumber) {
+    if (!canRegenerate || regeneratingDay != null) return;
+
+    if (!isPro && regenerationsUsed >= FREE_REGENERATIONS_PER_TRIP) {
+      setRegenerateError(
+        `Free plan allows ${FREE_REGENERATIONS_PER_TRIP} day regenerations per trip. Upgrade to Pro for unlimited.`
+      );
+      return;
+    }
+
+    const currentDay = tripData.days?.find((d) => d.day === dayNumber);
+    if (!currentDay) return;
+
+    setRegenerateError("");
+    setRegeneratingDay(dayNumber);
+
+    try {
+      const response = await fetch("/api/regenerate-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destination: tripData.destination,
+          budget: tripMeta?.budget ?? tripData.totalBudgetEstimate ?? "",
+          vibe: tripMeta?.vibe ?? "",
+          dayNumber,
+          currentDay,
+          totalDays: dayCount,
+          travelMonth: tripMeta?.travelMonth ?? null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || "Regeneration failed");
+      }
+
+      const updatedDays = tripData.days.map((d) =>
+        d.day === dayNumber ? data.day : d
+      );
+
+      const nextTripData = {
+        ...tripData,
+        days: updatedDays,
+        regenerationsUsed: regenerationsUsed + 1,
+      };
+
+      onTripDataChange?.(nextTripData);
+
+      if (tripId) {
+        const patchRes = await fetch("/api/update-trip", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: tripId, itinerary: nextTripData }),
+        });
+
+        if (!patchRes.ok) {
+          const patchData = await patchRes.json();
+          throw new Error(
+            patchData.error || "Day updated locally but failed to save"
+          );
+        }
+      }
+
+      setExpandedDays((prev) => new Set(prev).add(dayNumber));
+    } catch (err) {
+      setRegenerateError(
+        err instanceof Error ? err.message : "Could not regenerate this day"
+      );
+    } finally {
+      setRegeneratingDay(null);
     }
   }
 
@@ -359,19 +498,44 @@ export default function TripItineraryView({
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
+                  disabled={!canShare || shareBusy}
+                  title={
+                    canShare
+                      ? "Share your saved trip link"
+                      : "Save this trip first to get a shareable link"
+                  }
+                  className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   <Share2 className="h-3.5 w-3.5" />
-                  Share
+                  {shareBusy ? "Sharing…" : "Share"}
                 </button>
                 <button
                   type="button"
-                  className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
+                  onClick={handleWhatsAppShare}
+                  disabled={!canShare || shareBusy}
+                  title={
+                    canShare
+                      ? "Share on WhatsApp"
+                      : "Save this trip first to share on WhatsApp"
+                  }
+                  className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 px-3 py-2 text-xs font-medium text-[#128C7E] transition-colors hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  <FileText className="h-3.5 w-3.5" />
-                  PDF
+                  <WhatsAppIcon className="h-3.5 w-3.5" />
+                  WhatsApp
                 </button>
               </div>
+              {!canShare && (
+                <p className="text-center text-[10px] leading-snug text-[#94A3B8]">
+                  Save trip to unlock sharing
+                </p>
+              )}
+              <button
+                type="button"
+                className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                PDF
+              </button>
             </div>
           </div>
 
@@ -382,10 +546,14 @@ export default function TripItineraryView({
                 <Sparkles className="h-3.5 w-3.5" />
                 {heroBadge}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-xs font-medium backdrop-blur-md">
-                <Zap className="h-3.5 w-3.5" />
-                2 / 3 Regenerations Used
-              </span>
+              {canRegenerate && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-xs font-medium backdrop-blur-md">
+                  <Zap className="h-3.5 w-3.5" />
+                  {isPro
+                    ? "Pro · Unlimited regenerations"
+                    : `${regenerationsUsed} / ${FREE_REGENERATIONS_PER_TRIP} Regenerations Used`}
+                </span>
+              )}
             </div>
             <h1 className="text-[32px] font-bold leading-tight tracking-tight drop-shadow-sm md:text-[40px]">
               {title}
@@ -443,6 +611,19 @@ export default function TripItineraryView({
             progress={85}
           />
         </div>
+
+        {regenerateError && (
+          <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p>{regenerateError}</p>
+            <button
+              type="button"
+              onClick={() => setRegenerateError("")}
+              className="shrink-0 cursor-pointer text-xs font-semibold uppercase tracking-wide"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* ─── Packing essentials ─── */}
         {tripData.packingEssentials?.length > 0 && (
@@ -747,14 +928,40 @@ export default function TripItineraryView({
 
                   <div className="flex gap-5">
                     <div className="w-11 shrink-0" aria-hidden="true" />
-                    <div className="flex flex-1 justify-center pb-2">
-                      <button
-                        type="button"
-                        className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-8 py-2.5 text-sm font-medium text-[#0F172A] shadow-soft hover:bg-[#F8FAFC]"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        Regenerate this day
-                      </button>
+                    <div className="flex flex-1 flex-col items-center gap-2 pb-2">
+                      {canRegenerate && (
+                        <button
+                          type="button"
+                          onClick={() => handleRegenerateDay(day.day)}
+                          disabled={
+                            regeneratingDay != null || atRegenerationLimit
+                          }
+                          className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-8 py-2.5 text-sm font-medium text-[#0F172A] shadow-soft hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <RefreshCw
+                            className={`h-4 w-4 ${
+                              regeneratingDay === day.day ? "animate-spin" : ""
+                            }`}
+                          />
+                          {regeneratingDay === day.day
+                            ? "Regenerating..."
+                            : "Regenerate this day"}
+                        </button>
+                      )}
+                      {canRegenerate &&
+                        atRegenerationLimit &&
+                        day.day === tripData.days?.[tripData.days.length - 1]?.day && (
+                          <p className="max-w-md text-center text-xs text-[#64748B]">
+                            Free limit reached.{" "}
+                            <Link
+                              href="/"
+                              className="font-semibold text-[#F97316] hover:underline"
+                            >
+                              Upgrade to Pro
+                            </Link>{" "}
+                            for unlimited day regenerations.
+                          </p>
+                        )}
                     </div>
                   </div>
                 </article>
@@ -871,5 +1078,18 @@ function OverviewRow({ icon: Icon, label, value }) {
       </dt>
       <dd className="font-medium text-[#0F172A]">{value}</dd>
     </div>
+  );
+}
+
+function WhatsAppIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.881 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
   );
 }

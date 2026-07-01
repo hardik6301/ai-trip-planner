@@ -207,7 +207,6 @@ export default function Home() {
     setBudget,
     vibe,
     setVibe,
-    loading,
     error,
     generateTrip,
   } = useTrip();
@@ -642,10 +641,9 @@ export default function Home() {
                 {/* Orange CTA — Generate My Itinerary */}
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-secondary-container py-4 text-base font-bold text-white shadow-lg hover:bg-secondary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-secondary-container py-4 text-base font-bold text-white shadow-lg hover:bg-secondary active:scale-[0.98]"
                 >
-                  {loading ? "Generating..." : "Generate My Itinerary ⚡"}
+                  Generate My Itinerary ⚡
                 </button>
               </form>
 
