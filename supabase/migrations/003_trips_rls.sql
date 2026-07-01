@@ -3,6 +3,11 @@
 
 alter table public.trips enable row level security;
 
+-- Table-level grants (required for anon public reads; RLS alone is not enough)
+grant usage on schema public to anon, authenticated;
+grant select on public.trips to anon, authenticated;
+grant insert, update, delete on public.trips to authenticated;
+
 drop policy if exists "Users can insert own trips" on public.trips;
 create policy "Users can insert own trips"
   on public.trips for insert
