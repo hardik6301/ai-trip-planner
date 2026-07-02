@@ -16,6 +16,7 @@ import {
   formatTripDate,
 } from "@/utils/formatTrip";
 import { getPlaceImage, PLACE_IMAGE_FALLBACK } from "@/utils/placeImages";
+import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
 
 const FREE_TRIP_LIMIT = 5;
 
@@ -85,10 +86,8 @@ export default function MyTripsPage() {
       return;
     }
 
-    setIsPro(
-      user.user_metadata?.plan === "pro" ||
-        user.app_metadata?.is_pro === true
-    );
+    const { isPro: proStatus } = await fetchUserProStatus(supabase, user.id);
+    setIsPro(proStatus || isProUser(user));
 
     const { data, error: fetchError } = await supabase
       .from("trips")

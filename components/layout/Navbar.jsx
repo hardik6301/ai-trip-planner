@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, Mountain, Sparkles, Sun } from "lucide-react";
+import { ChevronDown, Mountain, Sun } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
+import ProBadge from "@/components/ui/ProBadge";
 
 function NavLink({ href, label, isActive, onClick }) {
   return (
@@ -28,22 +30,39 @@ export default function Navbar() {
   const menuRef = useRef(null);
 
   const [user, setUser] = useState(null);
+  const [isPro, setIsPro] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  /** Load user session and Pro status from profiles.is_pro */
+  async function loadAuthState(currentUser) {
+    setUser(currentUser);
+
+    if (currentUser) {
+      const supabase = createClient();
+      const { isPro: proStatus } = await fetchUserProStatus(
+        supabase,
+        currentUser.id
+      );
+      setIsPro(proStatus || isProUser(currentUser));
+    } else {
+      setIsPro(false);
+    }
+  }
 
   useEffect(() => {
     setMounted(true);
     const supabase = createClient();
 
     supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
-      setUser(currentUser);
+      loadAuthState(currentUser);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      loadAuthState(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -68,6 +87,7 @@ export default function Navbar() {
     const supabase = createClient();
     await supabase.auth.signOut();
     setDropdownOpen(false);
+    setIsPro(false);
     router.push("/");
     router.refresh();
   }
@@ -82,9 +102,9 @@ export default function Navbar() {
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split("@")[0] ||
-    "Hardik";
+    "Traveler";
 
-  const avatarLetter = (displayName || "H").charAt(0).toUpperCase();
+  const avatarLetter = (displayName || "T").charAt(0).toUpperCase();
   const showLoggedOut = mounted && !user;
   const showLoggedIn = mounted && user;
 
@@ -175,6 +195,7 @@ export default function Navbar() {
                 <span className="max-w-[100px] truncate text-sm font-medium text-[#0F172A]">
                   {displayName}
                 </span>
+                {isPro && <ProBadge />}
                 <ChevronDown className="h-4 w-4 text-[#64748B]" />
               </button>
 
@@ -198,14 +219,15 @@ export default function Navbar() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => router.push("/pricing")}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
-              >
-                <Sparkles className="h-4 w-4" />
-                Upgrade to Pro
-              </button>
+              {!isPro && (
+                <button
+                  type="button"
+                  onClick={() => router.push("/pricing")}
+                  className="cursor-pointer rounded-lg bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
+                >
+                  Upgrade to Pro
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -249,6 +271,18 @@ export default function Navbar() {
               isActive={pathname === "/dashboard"}
               onClick={() => setMobileOpen(false)}
             />
+            {showLoggedIn && !isPro && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  router.push("/pricing");
+                }}
+                className="mt-2 cursor-pointer rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Upgrade to Pro
+              </button>
+            )}
           </div>
         </div>
       )}

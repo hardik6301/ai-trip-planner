@@ -12,7 +12,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TripItineraryView from "@/components/trips/TripItineraryView";
 import { TRIP_STORAGE_KEY } from "@/constants/tripOptions";
 import { createClient } from "@/lib/supabase/client";
-import { isProUser } from "@/lib/userPlan";
+import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
 
 export default function ResultsPage() {
   // Parsed itinerary from sessionStorage after home page submission
@@ -40,7 +40,15 @@ export default function ResultsPage() {
 
     createClient()
       .auth.getUser()
-      .then(({ data: { user } }) => setIsPro(isProUser(user)));
+      .then(async ({ data: { user } }) => {
+        if (!user) {
+          setIsPro(false);
+          return;
+        }
+        const supabase = createClient();
+        const { isPro: proStatus } = await fetchUserProStatus(supabase, user.id);
+        setIsPro(proStatus || isProUser(user));
+      });
   }, []);
 
   function handleTripDataChange(next) {

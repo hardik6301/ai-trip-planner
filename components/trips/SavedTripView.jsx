@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import TripItineraryView from "@/components/trips/TripItineraryView";
 import { createClient } from "@/lib/supabase/client";
-import { isProUser } from "@/lib/userPlan";
+import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
 import { capitalizeDestination } from "@/utils/formatTrip";
 
 export default function SavedTripView({ trip, ownerId }) {
@@ -17,9 +17,14 @@ export default function SavedTripView({ trip, ownerId }) {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsPro(isProUser(user));
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setIsOwner(Boolean(user && ownerId && user.id === ownerId));
+      if (user) {
+        const { isPro: proStatus } = await fetchUserProStatus(supabase, user.id);
+        setIsPro(proStatus || isProUser(user));
+      } else {
+        setIsPro(false);
+      }
     });
   }, [ownerId]);
 

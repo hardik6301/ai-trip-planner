@@ -39,6 +39,7 @@ import { capitalizeDestination } from "@/utils/formatTrip";
 import { getPlaceImage, PLACE_IMAGE_FALLBACK } from "@/utils/placeImages";
 import { FREE_REGENERATIONS_PER_TRIP } from "@/constants/tripOptions";
 import { useToast } from "@/components/ui/Toast";
+import ProBadge from "@/components/ui/ProBadge";
 import {
   buildTripShareMessage,
   buildTripShareText,
@@ -692,9 +693,7 @@ export default function TripItineraryView({
 
               {/* AI Assistant Pro */}
               <div className="relative overflow-hidden rounded-[16px] bg-[#1E3A8A] p-5 text-white shadow-soft">
-                <span className="absolute top-4 right-4 rounded-md bg-[#F97316] px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
-                  Pro
-                </span>
+                <ProBadge className="absolute top-4 right-4" />
                 <h3 className="flex items-center gap-2 text-sm font-bold">
                   <Sparkles className="h-4 w-4" />
                   AI Assistant
