@@ -413,8 +413,14 @@ export default function Home() {
     vibe,
     setVibe,
     error,
+    isGenerating,
     generateTrip,
   } = useTrip();
+
+  // Prefetch generating route so navigation feels instant after submit
+  useEffect(() => {
+    router.prefetch("/generating");
+  }, [router]);
 
   // Extra form UI state — composed into the API vibe string on submit
   const [travelerType, setTravelerType] = useState("Solo");
@@ -688,7 +694,10 @@ export default function Home() {
           {/* Right — floating glass form card */}
           <div className="lg:col-span-5">
             <div className="space-y-5 rounded-xl border border-outline-variant/30 bg-white p-6 shadow-2xl md:p-8">
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form
+                onSubmit={handleSubmit}
+                className={`space-y-5 ${isGenerating ? "pointer-events-none opacity-80" : ""}`}
+              >
                 {/* Start Planning header + Geoapify city autocomplete */}
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-primary">
@@ -1036,12 +1045,20 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Orange CTA — Generate My Itinerary */}
+                {/* Orange CTA — shows spinner instantly while navigating to /generating */}
                 <button
                   type="submit"
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-secondary-container py-4 text-base font-bold text-white shadow-lg hover:bg-secondary active:scale-[0.98]"
+                  disabled={isGenerating}
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-secondary-container py-4 text-base font-bold text-white shadow-lg hover:bg-secondary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-90"
                 >
-                  Generate My Itinerary ⚡
+                  {isGenerating ? (
+                    <>
+                      <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Crafting your trip…
+                    </>
+                  ) : (
+                    <>Generate My Itinerary ⚡</>
+                  )}
                 </button>
               </form>
 

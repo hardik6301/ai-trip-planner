@@ -10,9 +10,10 @@ import Link from "next/link";
 import { Bookmark, Check } from "lucide-react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TripItineraryView from "@/components/trips/TripItineraryView";
-import { TRIP_STORAGE_KEY } from "@/constants/tripOptions";
+import { TRIP_STORAGE_KEY, FREE_TRIP_LIMIT, FREE_REGENERATIONS_PER_TRIP } from "@/constants/tripOptions";
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
+import { countUserTrips } from "@/lib/planLimits";
 
 export default function ResultsPage() {
   // Parsed itinerary from sessionStorage after home page submission
@@ -20,8 +21,10 @@ export default function ResultsPage() {
   // Avoid hydration mismatch before sessionStorage is read
   const [mounted, setMounted] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [userLoggedIn, setUserLoggedIn] = useState(false);
+  const [tripCount, setTripCount] = useState(0);
 
-  // Save button states: idle | saving | saved | auth_error | error
+  // Save button states: idle | saving | saved | auth_error | limit_reached | error
   const [saveState, setSaveState] = useState("idle");
   // Optional server error detail for debugging save failures
   const [saveErrorDetail, setSaveErrorDetail] = useState("");
@@ -42,12 +45,24 @@ export default function ResultsPage() {
       .auth.getUser()
       .then(async ({ data: { user } }) => {
         if (!user) {
+          setUserLoggedIn(false);
           setIsPro(false);
+          setTripCount(0);
           return;
         }
+
+        setUserLoggedIn(true);
         const supabase = createClient();
         const { isPro: proStatus } = await fetchUserProStatus(supabase, user.id);
-        setIsPro(proStatus || isProUser(user));
+        const pro = proStatus || isProUser(user);
+        setIsPro(pro);
+
+        if (!pro) {
+          const count = await countUserTrips(supabase, user.id);
+          setTripCount(count);
+        } else {
+          setTripCount(0);
+        }
       });
   }, []);
 
@@ -59,6 +74,11 @@ export default function ResultsPage() {
   // Save the current itinerary to Supabase via the API
   async function handleSave() {
     if (!tripData || saveState === "saved" || saveState === "saving") return;
+
+    if (!isPro && tripCount >= FREE_TRIP_LIMIT) {
+      setSaveState("limit_reached");
+      return;
+    }
 
     setSaveState("saving");
     setSaveErrorDetail("");
@@ -85,6 +105,12 @@ export default function ResultsPage() {
         return;
       }
 
+      if (response.status === 403 && data.code === "TRIP_LIMIT_REACHED") {
+        setTripCount(data.tripCount ?? FREE_TRIP_LIMIT);
+        setSaveState("limit_reached");
+        return;
+      }
+
       if (!response.ok) {
         setSaveErrorDetail(data.details || data.error || "");
         setSaveState("error");
@@ -92,23 +118,27 @@ export default function ResultsPage() {
       }
 
       setSavedTripId(data.trip?.id ?? null);
+      setTripCount((c) => c + 1);
       setSaveState("saved");
     } catch {
       setSaveState("error");
     }
   }
 
+  const atTripLimit = !isPro && tripCount >= FREE_TRIP_LIMIT;
+
   // Save button — rendered inside the hero budget card
   function renderSaveButton() {
     const isSaving = saveState === "saving";
     const isSaved = saveState === "saved";
+    const limitReached = saveState === "limit_reached" || atTripLimit;
 
     return (
       <div>
         <button
           type="button"
           onClick={handleSave}
-          disabled={isSaving || isSaved}
+          disabled={isSaving || isSaved || limitReached}
           className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSaved ? (
@@ -116,8 +146,20 @@ export default function ResultsPage() {
           ) : (
             <Bookmark className="h-4 w-4" />
           )}
-          {isSaving ? "Saving..." : isSaved ? "Saved!" : "Save to My Trips"}
+          {isSaving
+            ? "Saving..."
+            : isSaved
+              ? "Saved!"
+              : limitReached
+                ? "Trip limit reached"
+                : "Save to My Trips"}
         </button>
+
+        {!isPro && userLoggedIn && !limitReached && !isSaved && (
+          <p className="mt-2 text-center text-xs text-[#64748B]">
+            {tripCount} / {FREE_TRIP_LIMIT} free trips saved
+          </p>
+        )}
 
         {saveState === "auth_error" && (
           <p className="mt-3 text-center text-sm text-red-600">
@@ -125,6 +167,16 @@ export default function ResultsPage() {
             <Link href="/auth/login" className="font-semibold underline">
               Sign in
             </Link>
+          </p>
+        )}
+
+        {limitReached && (
+          <p className="mt-3 text-center text-sm text-[#9A3412]">
+            Free plan allows {FREE_TRIP_LIMIT} saved trips.{" "}
+            <Link href="/pricing" className="font-semibold text-[#F97316] underline">
+              Upgrade to Pro
+            </Link>{" "}
+            for unlimited.
           </p>
         )}
 
@@ -181,9 +233,18 @@ export default function ResultsPage() {
         shareTripId={savedTripId}
         onTripDataChange={handleTripDataChange}
         isPro={isPro}
+        canRegenerate={userLoggedIn}
         saveButton={renderSaveButton()}
         footerExtra={
-          <div className="text-center">
+          <div className="space-y-3 text-center">
+            {!userLoggedIn && (
+              <p className="text-sm text-[#64748B]">
+                <Link href="/auth/login" className="font-semibold text-[#F97316] underline">
+                  Sign in
+                </Link>{" "}
+                to regenerate days ({FREE_REGENERATIONS_PER_TRIP} free per trip on Free plan).
+              </p>
+            )}
             <Link
               href="/"
               className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary-container"

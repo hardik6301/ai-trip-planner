@@ -17,8 +17,7 @@ import {
 } from "@/utils/formatTrip";
 import { getPlaceImage, PLACE_IMAGE_FALLBACK } from "@/utils/placeImages";
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
-
-const FREE_TRIP_LIMIT = 5;
+import { FREE_TRIP_LIMIT } from "@/constants/tripOptions";
 
 const FILTER_TABS = [
   { id: "all", label: "All Trips" },

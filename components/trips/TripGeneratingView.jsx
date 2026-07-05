@@ -35,9 +35,15 @@ function targetProgress(elapsedSec) {
   return Math.min(92, 85 + (elapsedSec - 45) * 0.15);
 }
 
-/** Reusable shimmer placeholder block */
-function Shimmer({ className = "" }) {
-  return <div className={`shimmer-wrapper ${className}`} aria-hidden="true" />;
+/** Reusable shimmer placeholder block with optional staggered entrance */
+function Shimmer({ className = "", style }) {
+  return (
+    <div
+      className={`shimmer-wrapper ${className}`}
+      style={style}
+      aria-hidden="true"
+    />
+  );
 }
 
 export default function TripGeneratingView({
@@ -107,6 +113,8 @@ export default function TripGeneratingView({
     ? `Our AI is analyzing thousands of routes, local gems, and prices for ${destination}.`
     : "Our AI is analyzing thousands of routes, local gems, and flight prices for your dream vacation.";
 
+  const stagger = (ms) => ({ animationDelay: `${ms}ms` });
+
   return (
     <div
       className="generating-page-bg relative min-h-[calc(100vh-72px)] pb-32"
@@ -114,10 +122,18 @@ export default function TripGeneratingView({
         backgroundImage:
           "radial-gradient(circle at var(--gen-glow-x, 50%) var(--gen-glow-y, 30%), rgba(253, 118, 26, 0.04) 0%, #f8f9ff 42%)",
       }}
+      aria-busy={!isComplete}
+      aria-live="polite"
     >
       <div className="mx-auto max-w-[1280px] px-6 pb-10 pt-8">
         {/* ─── Hero loading header ─── */}
-        <div className="mx-auto mb-10 max-w-2xl text-center">
+        <div className="generating-fade-in mx-auto mb-10 max-w-2xl text-center">
+          {destination && (
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#FFF7ED] px-4 py-1.5 text-sm font-semibold text-[#9d4300]">
+              <Sparkles className="h-4 w-4 text-[#fd761a]" />
+              {destination}
+            </p>
+          )}
           <h1
             className="mb-4 text-[32px] font-semibold tracking-tight text-[#001356] md:text-[36px]"
             style={{
@@ -145,7 +161,10 @@ export default function TripGeneratingView({
         </div>
 
         {/* ─── Bento grid skeleton ─── */}
-        <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-12">
+        <div
+          className="generating-fade-in mb-10 grid grid-cols-1 gap-6 md:grid-cols-12"
+          style={stagger(80)}
+        >
           {/* Main featured card */}
           <div className="overflow-hidden rounded-xl border border-[#0b1c30]/5 bg-white p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] md:col-span-8">
             <Shimmer className="mb-4 h-64 w-full rounded-lg" />
@@ -178,18 +197,25 @@ export default function TripGeneratingView({
         </div>
 
         {/* ─── Day header skeleton ─── */}
-        <div className="mb-6 flex items-center gap-4">
+        <div
+          className="generating-fade-in mb-6 flex items-center gap-4"
+          style={stagger(160)}
+        >
           <Shimmer className="h-10 w-32 rounded-full border-2 border-[#001356]/10" />
           <div className="h-px flex-1 bg-[#c6c5d2]/30" />
           <Shimmer className="h-8 w-8 rounded-full" />
         </div>
 
-        {/* ─── Activity slot skeletons ─── */}
-        <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* ─── Activity slot skeletons — Day 1 ─── */}
+        <div
+          className="generating-fade-in mb-10 grid grid-cols-1 gap-4 md:grid-cols-3"
+          style={stagger(240)}
+        >
           {[0, 1, 2].map((i) => (
             <div
               key={i}
               className="flex flex-col rounded-xl border border-[#0b1c30]/5 bg-white p-4 shadow-sm"
+              style={stagger(280 + i * 60)}
             >
               <Shimmer className="mb-4 h-40 w-full rounded-lg" />
               <Shimmer className="mb-2 h-5 w-3/4 rounded-md" />
@@ -198,6 +224,30 @@ export default function TripGeneratingView({
                 <Shimmer className="h-8 w-20 rounded-md" />
                 <Shimmer className="h-6 w-6 rounded-full" />
               </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ─── Activity slot skeletons — Day 2 (scroll hint) ─── */}
+        <div
+          className="generating-fade-in mb-6 flex items-center gap-4 opacity-60"
+          style={stagger(420)}
+        >
+          <Shimmer className="h-10 w-32 rounded-full border-2 border-[#001356]/10" />
+          <div className="h-px flex-1 bg-[#c6c5d2]/30" />
+        </div>
+        <div
+          className="generating-fade-in grid grid-cols-1 gap-4 opacity-60 md:grid-cols-3"
+          style={stagger(480)}
+        >
+          {[0, 1, 2].map((i) => (
+            <div
+              key={`d2-${i}`}
+              className="flex flex-col rounded-xl border border-[#0b1c30]/5 bg-white p-4 shadow-sm"
+            >
+              <Shimmer className="mb-4 h-32 w-full rounded-lg" />
+              <Shimmer className="mb-2 h-5 w-2/3 rounded-md" />
+              <Shimmer className="h-3 w-1/3 rounded-md" />
             </div>
           ))}
         </div>

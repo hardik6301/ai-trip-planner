@@ -2,6 +2,9 @@
 import { NextResponse } from "next/server";
 // Import the server Supabase client to read the authenticated user session
 import { createClient } from "@/lib/supabase/server";
+// Server-side free tier trip limit enforcement
+import { checkTripSaveAllowed } from "@/lib/planLimits";
+import { FREE_TRIP_LIMIT } from "@/constants/tripOptions";
 
 /**
  * Ensures a profiles row exists for the user.
@@ -52,6 +55,20 @@ export async function POST(request) {
             "Your profile is missing. Run supabase/migrations/004_backfill_profiles.sql in Supabase SQL Editor.",
         },
         { status: 500 }
+      );
+    }
+
+    // Enforce free tier saved trip limit (Pro = unlimited)
+    const saveCheck = await checkTripSaveAllowed(supabase, user.id);
+    if (!saveCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: saveCheck.message,
+          code: saveCheck.code,
+          tripCount: saveCheck.tripCount,
+          limit: FREE_TRIP_LIMIT,
+        },
+        { status: 403 }
       );
     }
 

@@ -28,6 +28,8 @@ export function useTrip() {
   const [vibe, setVibe] = useState(TRAVEL_VIBES[0]);
   // Error message shown below the form on API failure
   const [error, setError] = useState("");
+  // True from submit until /generating route takes over — instant button feedback
+  const [isGenerating, setIsGenerating] = useState(false);
   // Holds the parsed itinerary JSON returned by the API
   const [tripData, setTripData] = useState(null);
 
@@ -45,6 +47,7 @@ export function useTrip() {
     e.preventDefault();
     setError("");
     setTripData(null);
+    setIsGenerating(true);
 
     const payload = {
       destination,
@@ -68,6 +71,7 @@ export function useTrip() {
     vibe,
     setVibe,
     error,
+    isGenerating,
     tripData,
     generateTrip,
   };

@@ -33,3 +33,6 @@ export const TRIP_GENERATION_ERROR_KEY = "travoraTripGenerationError";
 
 /** Free tier: max day regenerations allowed per trip */
 export const FREE_REGENERATIONS_PER_TRIP = 3;
+
+/** Free tier: max saved trips per account */
+export const FREE_TRIP_LIMIT = 5;

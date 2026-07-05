@@ -378,10 +378,22 @@ export default function TripItineraryView({
           currentDay,
           totalDays: dayCount,
           travelMonth: tripMeta?.travelMonth ?? null,
+          tripId: tripId || undefined,
+          regenerationsUsed,
         }),
       });
 
       const data = await response.json();
+
+      if (response.status === 401) {
+        setRegenerateError("Sign in to regenerate days on your itinerary.");
+        return;
+      }
+
+      if (response.status === 403 && data.code === "REGENERATION_LIMIT_REACHED") {
+        setRegenerateError(data.error);
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(data.error || data.details || "Regeneration failed");
@@ -394,7 +406,7 @@ export default function TripItineraryView({
       const nextTripData = {
         ...tripData,
         days: updatedDays,
-        regenerationsUsed: regenerationsUsed + 1,
+        regenerationsUsed: data.regenerationsUsed ?? regenerationsUsed + 1,
       };
 
       onTripDataChange?.(nextTripData);

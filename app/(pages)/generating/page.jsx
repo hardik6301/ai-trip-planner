@@ -15,11 +15,23 @@ import {
   TRIP_STORAGE_KEY,
 } from "@/constants/tripOptions";
 
+/** Read pending destination synchronously so the skeleton shows the city name immediately */
+function readPendingDestination() {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = sessionStorage.getItem(PENDING_TRIP_REQUEST_KEY);
+    if (raw) return JSON.parse(raw).destination || "";
+  } catch {
+    /* ignore malformed sessionStorage */
+  }
+  return "";
+}
+
 export default function GeneratingPage() {
   const router = useRouter();
   const started = useRef(false);
 
-  const [destination, setDestination] = useState("");
+  const [destination, setDestination] = useState(readPendingDestination);
   const [error, setError] = useState("");
   const [isComplete, setIsComplete] = useState(false);
 
