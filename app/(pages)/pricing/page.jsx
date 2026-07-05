@@ -61,7 +61,6 @@ export default function PricingPage() {
   const [mounted, setMounted] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [upgradeState, setUpgradeState] = useState("idle");
-  const [cancellingPro, setCancellingPro] = useState(false);
 
   /** Load auth user + Pro status from profiles.is_pro */
   const loadUserAndPlan = useCallback(async () => {
@@ -202,35 +201,6 @@ export default function PricingPage() {
     }
   }
 
-  async function handleCancelPro() {
-    if (cancellingPro || !isPro) return;
-
-    const confirmed = window.confirm(
-      "Cancel Pro and return to Free limits (5 trips, 3 regenerations per trip)? Your saved trips stay. No refund for the one-time payment."
-    );
-    if (!confirmed) return;
-
-    setCancellingPro(true);
-
-    try {
-      const res = await fetch("/api/profile/cancel-pro", { method: "POST" });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || data.details || "Could not cancel Pro");
-      }
-
-      showToast("Pro cancelled — you're on the Free plan", "success");
-      setIsPro(false);
-      await loadUserAndPlan();
-      router.refresh();
-    } catch (err) {
-      showToast(err.message || "Could not cancel Pro", "error");
-    } finally {
-      setCancellingPro(false);
-    }
-  }
-
   const upgradeLabel =
     upgradeState === "loading"
       ? "Opening checkout..."
@@ -345,7 +315,7 @@ export default function PricingPage() {
             {!mounted ? (
               <div className="mt-8 h-[50px] animate-pulse rounded-xl bg-[#F1F5F9]" />
             ) : isPro ? (
-              <div className="mt-8 space-y-3">
+              <div className="mt-8 space-y-2">
                 <button
                   type="button"
                   disabled
@@ -353,14 +323,15 @@ export default function PricingPage() {
                 >
                   Current Plan ✓
                 </button>
-                <button
-                  type="button"
-                  onClick={handleCancelPro}
-                  disabled={cancellingPro}
-                  className="w-full cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-medium text-[#64748B] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60"
-                >
-                  {cancellingPro ? "Cancelling…" : "Cancel Pro"}
-                </button>
+                <p className="text-center text-xs text-[#64748B]">
+                  Manage or cancel in{" "}
+                  <Link
+                    href="/profile"
+                    className="font-semibold text-[#1E3A8A] hover:underline"
+                  >
+                    Profile
+                  </Link>
+                </p>
               </div>
             ) : (
               <button

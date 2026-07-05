@@ -133,11 +133,6 @@ export default function Navbar() {
             label="Pricing"
             isActive={pathname === "/pricing"}
           />
-          <NavLink
-            href="/profile"
-            label="Profile"
-            isActive={pathname === "/profile"}
-          />
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
@@ -206,14 +201,7 @@ export default function Navbar() {
                     className="block px-4 py-2.5 text-sm text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     onClick={() => setDropdownOpen(false)}
                   >
-                    Profile
-                  </Link>
-                  <Link
-                    href="/my-trips"
-                    className="block px-4 py-2.5 text-sm text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    My Trips
+                    Profile & Settings
                   </Link>
                   <div className="my-1 border-t border-[#E2E8F0]" />
                   <button
@@ -272,12 +260,26 @@ export default function Navbar() {
               isActive={pathname === "/pricing"}
               onClick={() => setMobileOpen(false)}
             />
-            <NavLink
-              href="/profile"
-              label="Profile"
-              isActive={pathname === "/profile"}
-              onClick={() => setMobileOpen(false)}
-            />
+            {showLoggedIn && (
+              <>
+                <NavLink
+                  href="/profile"
+                  label="Profile"
+                  isActive={pathname === "/profile"}
+                  onClick={() => setMobileOpen(false)}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    handleSignOut();
+                  }}
+                  className="cursor-pointer text-left text-sm font-medium text-red-600"
+                >
+                  Sign Out
+                </button>
+              </>
+            )}
             {showLoggedIn && !isPro && (
               <button
                 type="button"
