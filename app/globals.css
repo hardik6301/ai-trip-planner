@@ -33,6 +33,113 @@
   --shadow-modal: 0 24px 48px -12px rgba(15, 23, 42, 0.15);
 }
 
+/* ─── Midnight Premium dark theme ───
+ * Primary #F97316 · Secondary #38BDF8 · Tertiary #00A2F4 · Neutral #020617
+ */
+.dark {
+  --navy-light: rgba(56, 189, 248, 0.12);
+  --orange-light: rgba(249, 115, 22, 0.18);
+
+  --background: #020617;
+  --foreground: #e7ebf4;
+  --surface: #020617;
+  --surface-container: #0b1220;
+  --surface-container-low: #0b1220;
+  --on-surface: #e7ebf4;
+  --on-surface-variant: #8b95ab;
+  --outline-variant: #1c2436;
+
+  --primary: #38bdf8;
+  --primary-container: #00a2f4;
+  --primary-fixed: rgba(56, 189, 248, 0.14);
+  --on-primary-fixed: #38bdf8;
+  --secondary-fixed: rgba(249, 115, 22, 0.18);
+
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.45), 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 24px 48px -12px rgba(0, 0, 0, 0.65);
+
+  color-scheme: dark;
+}
+
+/*
+ * Dark overrides for hardcoded hex utility classes used across components.
+ * These are unlayered so they win over Tailwind's layered utilities.
+ */
+
+/* Backgrounds — neutral #020617, cards one step lighter */
+.dark .bg-white { background-color: #0b1220; }
+.dark .bg-\[\#F8FAFC\] { background-color: #020617; }
+.dark .bg-\[\#FAFAF9\] { background-color: #020617; }
+.dark .bg-\[\#f8f9ff\] { background-color: #020617; }
+.dark .bg-\[\#F1F5F9\] { background-color: #141d31; }
+.dark .bg-\[\#E2E8F0\] { background-color: #1c2436; }
+.dark .bg-\[\#EFF6FF\] { background-color: rgba(56, 189, 248, 0.12); }
+.dark .bg-\[\#DBEAFE\] { background-color: rgba(56, 189, 248, 0.22); }
+.dark .bg-\[\#dce9ff\] { background-color: rgba(56, 189, 248, 0.12); }
+.dark .bg-\[\#FFF7ED\] { background-color: rgba(249, 115, 22, 0.15); }
+.dark .bg-\[\#F5F3FF\] { background-color: rgba(56, 189, 248, 0.12); }
+.dark .bg-\[\#CBD5E1\] { background-color: #2a3550; }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.12); }
+
+/* Solid navy buttons → tertiary blue #00A2F4 */
+.dark .bg-\[\#1E3A8A\] { background-color: #00a2f4; }
+.dark .bg-\[\#1e40af\] { background-color: #38bdf8; }
+.dark .hover\:bg-\[\#1e40af\]:hover { background-color: #38bdf8; }
+.dark .hover\:bg-\[\#1E293B\]:hover { background-color: #141d31; }
+
+/* Text — blues map to secondary #38BDF8 */
+.dark .text-\[\#0F172A\] { color: #e7ebf4; }
+.dark .text-\[\#64748B\] { color: #8b95ab; }
+.dark .text-\[\#94A3B8\] { color: #67718a; }
+.dark .text-\[\#1E3A8A\] { color: #38bdf8; }
+.dark .text-\[\#1E40AF\] { color: #38bdf8; }
+.dark .text-\[\#001356\] { color: #38bdf8; }
+.dark .text-\[\#3B82F6\] { color: #38bdf8; }
+.dark .text-\[\#9A3412\] { color: #fdba74; }
+.dark .text-\[\#C2410C\] { color: #fb923c; }
+.dark .text-\[\#9d4300\] { color: #fdba74; }
+.dark .text-\[\#454650\] { color: #8b95ab; }
+.dark .text-\[\#767681\] { color: #8b95ab; }
+.dark .text-\[\#7C3AED\] { color: #38bdf8; }
+.dark .text-red-600 { color: #f87171; }
+.dark .text-red-700 { color: #fca5a5; }
+.dark .text-emerald-700 { color: #6ee7b7; }
+
+/* Borders */
+.dark .border-\[\#E2E8F0\] { border-color: #1c2436; }
+.dark .border-\[\#F1F5F9\] { border-color: #141d31; }
+.dark .border-\[\#CBD5E1\] { border-color: #2a3550; }
+.dark .border-\[\#BFDBFE\]\/60 { border-color: rgba(56, 189, 248, 0.35); }
+.dark .border-\[\#93C5FD\]\/80 { border-color: rgba(56, 189, 248, 0.6); }
+.dark .border-\[\#FFEDD5\] { border-color: rgba(249, 115, 22, 0.3); }
+.dark .border-\[\#FED7AA\] { border-color: rgba(249, 115, 22, 0.35); }
+.dark .border-\[\#FECACA\] { border-color: rgba(239, 68, 68, 0.35); }
+.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.35); }
+.dark .border-\[\#0b1c30\] { border-color: #1c2436; }
+.dark .border-\[\#001356\] { border-color: #1c2436; }
+.dark .border-\[\#1E3A8A\] { border-color: #38bdf8; }
+
+/* Hover states */
+.dark .hover\:bg-white:hover { background-color: #141d31; }
+.dark .hover\:bg-\[\#F8FAFC\]:hover { background-color: #141d31; }
+.dark .hover\:bg-\[\#F1F5F9\]:hover { background-color: #1c2436; }
+.dark .hover\:bg-\[\#E2E8F0\]:hover { background-color: #2a3550; }
+.dark .hover\:bg-\[\#EFF6FF\]:hover { background-color: rgba(56, 189, 248, 0.2); }
+.dark .hover\:bg-\[\#DBEAFE\]:hover { background-color: rgba(56, 189, 248, 0.3); }
+.dark .hover\:bg-\[\#FFF7ED\]:hover { background-color: rgba(249, 115, 22, 0.25); }
+.dark .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.15); }
+.dark .hover\:bg-red-100:hover { background-color: rgba(239, 68, 68, 0.25); }
+.dark .hover\:text-\[\#0F172A\]:hover { color: #e7ebf4; }
+.dark .hover\:text-\[\#64748B\]:hover { color: #b6bfd1; }
+.dark .hover\:text-\[\#1E3A8A\]:hover { color: #7dd3fc; }
+.dark .hover\:text-\[\#1E40AF\]:hover { color: #7dd3fc; }
+.dark .hover\:border-\[\#1E3A8A\]:hover { border-color: #7dd3fc; }
+
+/* Blue gradient banners → midnight card gradient with blue edge */
+.dark .from-\[\#1E3A8A\] { --tw-gradient-from: #0b1220; }
+.dark .to-\[\#2563EB\] { --tw-gradient-to: #144a75; }
+
 @theme inline {
   --color-navy: var(--navy);
   --color-orange: var(--orange);
@@ -110,6 +217,50 @@ body {
   width: 2px;
   background: #e2e8f0;
   border-radius: 1px;
+}
+
+.dark .itinerary-timeline-rail {
+  background: #1c2436;
+}
+
+.dark .timeline-day-node {
+  background: #00a2f4;
+  box-shadow: 0 2px 8px rgba(0, 162, 244, 0.3);
+}
+
+.dark .timeline-dot {
+  background: #38bdf8;
+}
+
+.dark .timeline-sun-marker,
+.dark .timeline-moon-marker {
+  background: #0b1220;
+}
+
+.dark .timeline-moon-marker {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.dark .shimmer-wrapper {
+  background-color: #0b1220;
+}
+
+.dark .shimmer-wrapper::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.dark .generating-page-bg {
+  background-color: #020617;
+}
+
+.dark .feature-watermark-icon {
+  color: rgba(56, 189, 248, 0.12);
 }
 
 .timeline-day-node {

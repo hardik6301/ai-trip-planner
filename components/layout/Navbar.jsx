@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, Mountain, Sun } from "lucide-react";
+import { ChevronDown, Moon, Mountain, Sun } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
 import { resolveAvatarUrl, resolveDisplayName } from "@/lib/profile";
+import { useTheme } from "@/hooks/useTheme";
 import ProBadge from "@/components/ui/ProBadge";
 
 function NavLink({ href, label, isActive, onClick }) {
@@ -29,6 +30,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const menuRef = useRef(null);
+  const { theme, toggleTheme } = useTheme();
 
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -138,10 +140,17 @@ export default function Navbar() {
         <div className="hidden items-center gap-4 md:flex">
           <button
             type="button"
+            onClick={toggleTheme}
             className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#F1F5F9] hover:text-[#0F172A]"
-            aria-label="Toggle theme"
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
           >
-            <Sun className="h-[18px] w-[18px]" />
+            {theme === "dark" ? (
+              <Sun className="h-[18px] w-[18px]" />
+            ) : (
+              <Moon className="h-[18px] w-[18px]" />
+            )}
           </button>
 
           {!mounted && (
@@ -280,6 +289,21 @@ export default function Navbar() {
                 </button>
               </>
             )}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex cursor-pointer items-center gap-2 text-left text-sm font-medium text-[#64748B]"
+            >
+              {theme === "dark" ? (
+                <>
+                  <Sun className="h-4 w-4" /> Light Mode
+                </>
+              ) : (
+                <>
+                  <Moon className="h-4 w-4" /> Dark Mode
+                </>
+              )}
+            </button>
             {showLoggedIn && !isPro && (
               <button
                 type="button"
