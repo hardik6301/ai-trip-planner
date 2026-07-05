@@ -84,6 +84,9 @@
 
 /* Solid navy buttons → tertiary blue #00A2F4 */
 .dark .bg-\[\#1E3A8A\] { background-color: #00a2f4; }
+/* AI chat editor: navy header + frosted lock overlay */
+.dark .bg-\[\#0F1B4D\] { background-color: #0b1220; }
+.dark .bg-white\/60 { background-color: rgba(2, 6, 23, 0.6); }
 .dark .bg-\[\#1e40af\] { background-color: #38bdf8; }
 .dark .hover\:bg-\[\#1e40af\]:hover { background-color: #38bdf8; }
 .dark .hover\:bg-\[\#1E293B\]:hover { background-color: #141d31; }
@@ -201,6 +204,39 @@ body {
 
 .shadow-soft {
   box-shadow: var(--shadow-soft);
+}
+
+/* AI chat FAB — expanding ripple rings to draw attention */
+@keyframes chat-fab-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+.chat-fab-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(249, 115, 22, 0.45);
+  animation: chat-fab-ripple 2.4s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.chat-fab-ring-delayed {
+  animation-delay: 1.2s;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .chat-fab-ring {
+    display: none;
+  }
 }
 
 .day-scroller::-webkit-scrollbar {

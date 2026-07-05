@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Bookmark, Check } from "lucide-react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TripItineraryView from "@/components/trips/TripItineraryView";
+import TripChatEditor from "@/components/trips/TripChatEditor";
 import { TRIP_STORAGE_KEY, FREE_TRIP_LIMIT, FREE_REGENERATIONS_PER_TRIP } from "@/constants/tripOptions";
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
@@ -255,6 +256,15 @@ export default function ResultsPage() {
             </Link>
           </div>
         }
+      />
+
+      {/* Floating AI Chat Editor — Pro users can edit the itinerary via chat */}
+      <TripChatEditor
+        tripData={tripData}
+        destination={tripData.destination}
+        isPro={isPro}
+        onTripDataChange={handleTripDataChange}
+        tripId={savedTripId}
       />
     </div>
   );
