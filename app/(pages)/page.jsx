@@ -111,19 +111,32 @@ const ACTIVITY_INTERESTS = [
   "🍷 Fine Dining",
 ];
 
-/** Mock city suggestions when Geoapify key is missing or API fails */
+/** Mock destinations when Geoapify key is missing (countries, states, cities) */
 const MOCK_CITIES = [
-  { city: "Manali", country: "India", label: "Manali, India" },
-  { city: "Goa", country: "India", label: "Goa, India" },
-  { city: "Bali", country: "Indonesia", label: "Bali, Indonesia" },
-  { city: "Dubai", country: "United Arab Emirates", label: "Dubai, United Arab Emirates" },
-  { city: "Paris", country: "France", label: "Paris, France" },
-  { city: "Tokyo", country: "Japan", label: "Tokyo, Japan" },
-  { city: "Bangkok", country: "Thailand", label: "Bangkok, Thailand" },
-  { city: "London", country: "United Kingdom", label: "London, United Kingdom" },
-  { city: "New York", country: "United States", label: "New York, United States" },
-  { city: "Singapore", country: "Singapore", label: "Singapore, Singapore" },
+  { city: "Thailand", country: "", state: "", label: "Thailand", subtitle: "Country", resultType: "country" },
+  { city: "Bangkok", country: "Thailand", state: "", label: "Bangkok, Thailand", subtitle: "Thailand", resultType: "city" },
+  { city: "Rajasthan", country: "India", state: "Rajasthan", label: "Rajasthan, India", subtitle: "India", resultType: "state" },
+  { city: "Manali", country: "India", state: "Himachal Pradesh", label: "Manali, Himachal Pradesh, India", subtitle: "Himachal Pradesh, India", resultType: "city" },
+  { city: "Goa", country: "India", state: "Goa", label: "Goa, India", subtitle: "India", resultType: "state" },
+  { city: "Bali", country: "Indonesia", state: "", label: "Bali, Indonesia", subtitle: "Indonesia", resultType: "city" },
+  { city: "Dubai", country: "United Arab Emirates", state: "", label: "Dubai, United Arab Emirates", subtitle: "United Arab Emirates", resultType: "city" },
+  { city: "Paris", country: "France", state: "", label: "Paris, France", subtitle: "France", resultType: "city" },
+  { city: "Tokyo", country: "Japan", state: "", label: "Tokyo, Japan", subtitle: "Japan", resultType: "city" },
+  { city: "London", country: "United Kingdom", state: "", label: "London, United Kingdom", subtitle: "United Kingdom", resultType: "city" },
+  { city: "New York", country: "United States", state: "New York", label: "New York, United States", subtitle: "United States", resultType: "city" },
+  { city: "Singapore", country: "Singapore", state: "", label: "Singapore", subtitle: "Country", resultType: "country" },
 ];
+
+/** Prefer countries/states/cities over suburbs and postcodes in ranking */
+const DESTINATION_TYPE_PRIORITY = {
+  country: 0,
+  state: 1,
+  city: 2,
+  county: 3,
+  locality: 4,
+  postcode: 5,
+  suburb: 6,
+};
 
 /** How It Works — three simple steps */
 const HOW_IT_WORKS_STEPS = [
@@ -192,24 +205,191 @@ const POPULAR_DESTINATIONS = [
   },
 ];
 
-/** Filter mock cities by query string (used when no Geoapify key) */
+/** Filter mock destinations by query string (used when no Geoapify key) */
 function filterMockCities(query) {
   const q = query.toLowerCase();
   return MOCK_CITIES.filter(
     (c) =>
       c.city.toLowerCase().includes(q) ||
       c.country.toLowerCase().includes(q) ||
+      c.state?.toLowerCase().includes(q) ||
       c.label.toLowerCase().includes(q)
-  ).slice(0, 6);
+  )
+    .sort((a, b) => scoreDestination(a, query) - scoreDestination(b, query))
+    .slice(0, 8);
 }
 
-/** Parse Geoapify autocomplete feature into a dropdown item */
+/** Build a concise "City, State, Country" label for the dropdown */
+function buildDestinationLabel(name, state, country, formatted) {
+  if (!name) return formatted || "";
+  const parts = [name];
+  if (state && state !== name) parts.push(state);
+  if (country && country !== state && country !== name) parts.push(country);
+  const built = parts.join(", ");
+  return built.length <= 72 ? built : formatted || built;
+}
+
+/** First segment of Geoapify formatted address */
+function extractLeadingPlace(formatted) {
+  return formatted?.split(",")[0]?.trim() || "";
+}
+
+/** Parse Geoapify feature into a travel destination suggestion */
 function parseGeoapifyFeature(feature) {
   const props = feature.properties || {};
-  const city = props.city || props.name || props.formatted?.split(",")[0] || "";
-  const country = props.country || "";
-  const label = country ? `${city}, ${country}` : city;
-  return { city, country, label };
+  const resultType = props.result_type || "unknown";
+
+  let primaryName = "";
+  let subtitle = "";
+  let label = props.formatted || "";
+
+  if (resultType === "country") {
+    primaryName = props.country || label;
+    subtitle = "Country";
+    label = primaryName;
+  } else if (resultType === "state") {
+    primaryName = props.state || extractLeadingPlace(label);
+    subtitle = props.country || "";
+    label = buildDestinationLabel(primaryName, "", props.country, label);
+  } else if (resultType === "city" || resultType === "county") {
+    primaryName = props.city || props.county || props.name || extractLeadingPlace(label);
+    subtitle = [props.state, props.country].filter(Boolean).join(", ");
+    label = buildDestinationLabel(primaryName, props.state, props.country, label);
+  } else if (resultType === "postcode") {
+    primaryName = props.city || extractLeadingPlace(label);
+    subtitle = [props.state, props.country].filter(Boolean).join(", ");
+    label = buildDestinationLabel(primaryName, props.state, props.country, label);
+  } else {
+    primaryName =
+      props.city || props.name || props.address_line1 || extractLeadingPlace(label);
+    subtitle = props.country || "";
+    label = props.formatted || buildDestinationLabel(primaryName, props.state, props.country, label);
+  }
+
+  return {
+    city: primaryName,
+    country: props.country || "",
+    state: props.state || "",
+    subtitle,
+    resultType,
+    label: label.trim(),
+    placeId: props.place_id,
+  };
+}
+
+/** Score a suggestion — lower is better (ranks to top) */
+function scoreDestination(item, query) {
+  const q = query.toLowerCase().trim();
+  const primary = (item.city || "").toLowerCase();
+  const country = (item.country || "").toLowerCase();
+  const state = (item.state || "").toLowerCase();
+  const label = (item.label || "").toLowerCase();
+
+  let score = DESTINATION_TYPE_PRIORITY[item.resultType] ?? 20;
+
+  if (item.resultType === "country" && country === q) score -= 100;
+  if (primary === q) score -= 80;
+  if (state === q) score -= 70;
+  if (country === q && item.resultType !== "country") score -= 40;
+  if (primary.startsWith(q)) score -= 30;
+  if (label.startsWith(q)) score -= 20;
+
+  // Penalize homonyms in the wrong country (e.g. village "Thailand" in Philippines)
+  if (primary === q && country && country !== q && item.resultType !== "country") {
+    score += 100;
+  }
+
+  // Reduce suburb noise unless it's an exact match
+  if (item.resultType === "suburb" && primary !== q) score += 50;
+
+  // Boost postcode hits when the city name matches (e.g. Manali, HP)
+  if (item.resultType === "postcode" && primary === q) score -= 25;
+
+  return score;
+}
+
+/** Rank, dedupe, and cap Geoapify results for travel planning */
+function rankAndFilterDestinations(features, query) {
+  const parsed = features
+    .map(parseGeoapifyFeature)
+    .filter((item) => item.city || item.label);
+
+  const seen = new Set();
+  const ranked = [];
+
+  for (const item of parsed.sort(
+    (a, b) => scoreDestination(a, query) - scoreDestination(b, query)
+  )) {
+    const key = item.label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    // Drop low-value suburbs once we already have stronger matches
+    if (item.resultType === "suburb" && ranked.length >= 3) continue;
+
+    ranked.push(item);
+    if (ranked.length >= 8) break;
+  }
+
+  return ranked;
+}
+
+/** Geoapify autocomplete — no type=city filter (breaks country/state search) */
+async function fetchGeoapifyAutocomplete(query, apiKey) {
+  const params = new URLSearchParams({
+    text: query,
+    limit: "15",
+    lang: "en",
+    apiKey,
+  });
+  const res = await fetch(
+    `https://api.geoapify.com/v1/geocode/autocomplete?${params}`
+  );
+  if (!res.ok) throw new Error("Autocomplete failed");
+  const data = await res.json();
+  return data.features || [];
+}
+
+/** Geoapify forward search — better for exact country/state names */
+async function fetchGeoapifySearch(query, apiKey) {
+  const params = new URLSearchParams({
+    text: query,
+    limit: "6",
+    lang: "en",
+    apiKey,
+  });
+  const res = await fetch(
+    `https://api.geoapify.com/v1/geocode/search?${params}`
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.features || [];
+}
+
+/** Combined Geoapify fetch with ranking + search fallback */
+async function fetchGeoapifyDestinations(query, apiKey) {
+  const autocompleteFeatures = await fetchGeoapifyAutocomplete(query, apiKey);
+  let results = rankAndFilterDestinations(autocompleteFeatures, query);
+
+  const q = query.toLowerCase().trim();
+  const hasStrongMatch = results.some(
+    (r) =>
+      r.city.toLowerCase() === q ||
+      r.country.toLowerCase() === q ||
+      r.state.toLowerCase() === q ||
+      r.resultType === "country"
+  );
+
+  // Supplement with forward search when autocomplete misses the obvious hit
+  if (results.length < 2 || !hasStrongMatch) {
+    const searchFeatures = await fetchGeoapifySearch(query, apiKey);
+    results = rankAndFilterDestinations(
+      [...searchFeatures, ...autocompleteFeatures],
+      query
+    );
+  }
+
+  return results;
 }
 
 export default function Home() {
@@ -285,7 +465,7 @@ export default function Home() {
     if (!budget) setBudget("Economy");
   }, [budget, setBudget]);
 
-  /** Fetch city suggestions from Geoapify or mock data */
+  /** Fetch destination suggestions from Geoapify (ranked) or mock data */
   const fetchCitySuggestions = useCallback(async (query) => {
     if (query.length < 2) {
       setSuggestions([]);
@@ -305,18 +485,7 @@ export default function Home() {
         return;
       }
 
-      const url =
-        `https://api.geoapify.com/v1/geocode/autocomplete` +
-        `?text=${encodeURIComponent(query)}` +
-        `&type=city&limit=6&apiKey=${GEOAPIFY_KEY}`;
-
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Geoapify request failed");
-
-      const data = await res.json();
-      const results = (data.features || [])
-        .map(parseGeoapifyFeature)
-        .filter((item) => item.city);
+      const results = await fetchGeoapifyDestinations(query, GEOAPIFY_KEY);
 
       setSuggestions(results);
       setDropdownOpen(true);
@@ -575,17 +744,23 @@ export default function Home() {
                       >
                         {suggestionsLoading && suggestions.length === 0 ? (
                           <li className="px-4 py-3 text-sm text-[#64748B]">
-                            Searching cities…
+                            Searching destinations…
                           </li>
                         ) : suggestions.length === 0 ? (
                           <li className="px-4 py-3 text-sm text-[#64748B]">
-                            No cities found
+                            No destinations found — try a city, state, or country
                           </li>
                         ) : (
                           suggestions.map((item, index) => {
                             const highlighted = index === highlightIndex;
+                            const secondary =
+                              item.subtitle ||
+                              [item.state, item.country].filter(Boolean).join(", ");
                             return (
-                              <li key={`${item.label}-${index}`} role="option">
+                              <li
+                                key={`${item.placeId || item.label}-${index}`}
+                                role="option"
+                              >
                                 <button
                                   type="button"
                                   onMouseEnter={() => setHighlightIndex(index)}
@@ -599,9 +774,9 @@ export default function Home() {
                                   <span className="text-sm font-medium text-[#1E3A8A]">
                                     {item.city}
                                   </span>
-                                  {item.country && (
+                                  {secondary && (
                                     <span className="text-xs text-[#64748B]">
-                                      {item.country}
+                                      {secondary}
                                     </span>
                                   )}
                                 </button>
