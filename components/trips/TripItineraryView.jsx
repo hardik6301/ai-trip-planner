@@ -49,6 +49,8 @@ import {
   shareTripNative,
 } from "@/utils/shareTrip";
 import { downloadTripPdf } from "@/utils/downloadTripPdf";
+import { useTripLiveData } from "@/hooks/useTripLiveData";
+import { currencySymbol, parseTripVibe } from "@/lib/destinationLive";
 
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80";
@@ -240,13 +242,14 @@ export default function TripItineraryView({
   const dayCount = tripData.days?.length ?? tripMeta?.days ?? 0;
   const activityCount = countActivities(tripData.days);
   const placeCount = countPlaces(tripData.days);
+  const tripVibeParsed = parseTripVibe(tripMeta?.vibe);
+  const vibeShort =
+    tripVibeParsed.styleParts.join(" · ") ||
+    tripMeta?.vibe?.split(". Interests:")[0]?.trim() ||
+    "";
   const budget = tripData.totalBudgetEstimate || tripMeta?.budget || "₹42,500";
   const budgetCap = tripMeta?.budget || "₹50,000";
-  const budgetDisplay = formatBudgetDisplay(
-    budget,
-    budgetCap,
-    tripMeta?.vibe
-  );
+  const budgetDisplay = formatBudgetDisplay(budget, budgetCap, vibeShort);
 
   const [activeDay, setActiveDay] = useState(1);
   const [budgetInfoOpen, setBudgetInfoOpen] = useState(false);
@@ -268,8 +271,31 @@ export default function TripItineraryView({
   const canShare = Boolean(activeShareId);
 
   const regenerationsUsed = tripData.regenerationsUsed ?? 0;
+  const { liveData, loading: liveLoading } = useTripLiveData(
+    tripData.destination
+  );
+
+  const tripVibe = tripVibeParsed;
+
   const atRegenerationLimit =
     canRegenerate && !isPro && regenerationsUsed >= FREE_REGENERATIONS_PER_TRIP;
+
+  const weatherTitle = liveLoading
+    ? "…"
+    : liveData?.weather
+      ? `${liveData.weather.tempC}°C`
+      : "—";
+  const weatherSubtitle = liveLoading
+    ? "Loading…"
+    : liveData?.weather?.description || "Unavailable";
+
+  const localCurrency = liveData?.currency?.localCode || "—";
+  const currencySubtitle = liveLoading
+    ? "Loading…"
+    : liveData?.currency?.exchangeLine || "—";
+  const currencyTitle = liveLoading
+    ? "…"
+    : `${localCurrency} (${currencySymbol(localCurrency)})`;
 
   useEffect(() => {
     if (!budgetInfoOpen) return;
@@ -619,15 +645,17 @@ export default function TripItineraryView({
           <StatCard
             emoji="⛅"
             label="Weather"
-            title="18°C"
-            subtitle="Partly Cloudy"
+            title={weatherTitle}
+            subtitle={weatherSubtitle}
+            loading={liveLoading}
           />
           <StatCard
             icon={Banknote}
             iconTone="green"
             label="Currency"
-            title="CHF"
-            subtitle="₹1 = 1.08 CHF"
+            title={currencyTitle}
+            subtitle={currencySubtitle}
+            loading={liveLoading}
           />
           <StatCard
             icon={Calendar}
@@ -746,12 +774,18 @@ export default function TripItineraryView({
                     </li>
                   ))}
                 </ul>
-                <Link
-                  href="/pricing"
-                  className="mt-4 flex w-full items-center justify-center rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white hover:bg-[#ea580c]"
-                >
-                  Upgrade to Pro
-                </Link>
+                {isPro ? (
+                  <p className="mt-4 rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-medium text-white/90">
+                    Pro active — AI features unlocked
+                  </p>
+                ) : (
+                  <Link
+                    href="/pricing"
+                    className="mt-4 flex w-full items-center justify-center rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white hover:bg-[#ea580c]"
+                  >
+                    Upgrade to Pro
+                  </Link>
+                )}
               </div>
 
               {/* Trip Overview */}
@@ -775,12 +809,9 @@ export default function TripItineraryView({
                     label="Travelers"
                     value="2 Adults"
                   />
-                  <OverviewRow
-                    icon={Heart}
-                    label="Trip Type"
-                    value={tripMeta?.vibe || "Romantic Getaway"}
-                  />
                 </dl>
+
+                <TripTypeBlock vibeParts={tripVibe} />
               </div>
             </div>
           </aside>
@@ -1036,6 +1067,7 @@ function StatCard({
   subtitle,
   progress,
   tripStats,
+  loading = false,
 }) {
   const iconWrap =
     iconTone === "green"
@@ -1073,12 +1105,16 @@ function StatCard({
           <p
             className={`font-bold leading-tight text-[#0F172A] ${
               progress != null ? "line-clamp-2 text-xs" : "text-sm"
-            }`}
+            } ${loading ? "animate-pulse text-[#94A3B8]" : ""}`}
           >
             {title}
           </p>
           {subtitle && (
-            <p className="mt-1 text-xs leading-snug text-[#64748B]">
+            <p
+              className={`mt-1 text-xs leading-snug text-[#64748B] ${
+                loading ? "animate-pulse" : ""
+              }`}
+            >
               {subtitle}
             </p>
           )}
@@ -1097,6 +1133,54 @@ function StatCard({
             {progress}%
           </span>
         </div>
+      )}
+    </div>
+  );
+}
+
+function TripTypeBlock({ vibeParts }) {
+  const { styleParts, interests } = vibeParts;
+  const hasContent = styleParts.length > 0 || interests.length > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="mt-4 border-t border-[#F1F5F9] pt-4">
+        <p className="flex items-center gap-2 text-sm text-[#64748B]">
+          <Heart className="h-4 w-4 shrink-0" />
+          Trip Type
+        </p>
+        <p className="mt-2 text-sm font-medium text-[#0F172A]">
+          Custom adventure
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 border-t border-[#F1F5F9] pt-4">
+      <p className="flex items-center gap-2 text-sm text-[#64748B]">
+        <Heart className="h-4 w-4 shrink-0" />
+        Trip Type
+      </p>
+
+      {styleParts.length > 0 && (
+        <p className="mt-2 text-sm font-semibold leading-snug text-[#0F172A]">
+          {styleParts.join(" · ")}
+        </p>
+      )}
+
+      {interests.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {interests.map((item) => (
+            <li
+              key={item}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#FFEDD5] bg-[#FFF7ED] px-2.5 py-1 text-[11px] font-medium text-[#9A3412]"
+            >
+              <span className="h-1 w-1 shrink-0 rounded-full bg-[#F97316]" aria-hidden="true" />
+              {item}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

@@ -18,7 +18,7 @@ export default function Footer() {
             <span className="text-base font-bold text-[#0F172A]">Travora</span>
           </div>
           <p className="text-sm text-[#64748B]">
-            © 2024 Travora AI Travel. All rights reserved.
+            © 2026 Travora AI Travel. All rights reserved.
           </p>
         </div>
 
