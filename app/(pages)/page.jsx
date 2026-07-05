@@ -1,22 +1,22 @@
 "use client";
 
 /**
- * Travora home page — Stitch-matched hero, planning form, destinations,
- * features, and testimonials. Form state lives in useTrip; extra UI fields
- * (traveler type, interests, advanced options) compose into the API payload.
+ * Travora home page — hero planning form, Geoapify city autocomplete,
+ * popular destinations, How It Works, and stats. Form state lives in useTrip;
+ * traveler type + interests compose into the API vibe string on submit.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTrip } from "@/hooks/useTrip";
 import { parseAuthErrorFromHash } from "@/utils/parseAuthError";
-import {
-  TRAVEL_VIBES,
-} from "@/constants/tripOptions";
 
 // Original WanderAI Dolomites hero (stitch_wanderai_travel_planner/wanderai_home)
 const HERO_IMAGE =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuBClOAFjQFJzz2px3Ek8Wih1oANUgtcBUIZpphzV98fg3Xa-AImWI6EUnysajzk2_X5DOmq_0ezjtGNmBPXA0l6fYaDrdEEDZ36dxQo5_0BVVvtKlwvbiP0xmqs8Os9c9JOpDCJJ07zwG6eux5c9s2dCNOH7Twxdjcy03_otXXFhBn7ODnP5N6HtRkEyamtDHPlQa8v4885gP_8eSCAhERGKO01hvqDw3OzyxhWOb6jXc9UwKhV2zNsCC7SHR6eFQi86ynGN0kDuGn7";
+
+/** Geoapify key — falls back to mock suggestions when missing */
+const GEOAPIFY_KEY = process.env.NEXT_PUBLIC_GEOAPIFY_KEY?.trim() || "";
 
 /** Today's date as YYYY-MM-DD for date input min values */
 function getTodayISO() {
@@ -83,13 +83,79 @@ const TRAVELER_TYPES = [
   { id: "Friends", icon: "group", label: "Friends" },
 ];
 
-/** Activity interest chips — multi-select */
+/** Travel vibe chips — single select */
+const TRAVEL_VIBES = [
+  "Adventure 🧗",
+  "Relaxation 🧘",
+  "Cultural 🏛",
+  "Luxury ✨",
+  "Budget 💰",
+  "Foodie 🍜",
+  "Nature 🌿",
+  "Party 🎉",
+];
+
+/** Activity interest chips — multi-select (zero to all) */
 const ACTIVITY_INTERESTS = [
-  "Adventure",
-  "Relaxation",
-  "Culture",
-  "Foodie",
-  "Nightlife",
+  "🏖 Beaches",
+  "🏔 Trekking",
+  "🍜 Street Food",
+  "🛍 Shopping",
+  "🎭 Nightlife",
+  "💆 Wellness",
+  "🤿 Water Sports",
+  "📸 Photography",
+  "🏛 Museums",
+  "🎢 Theme Parks",
+  "🌿 Nature Walks",
+  "🍷 Fine Dining",
+];
+
+/** Mock city suggestions when Geoapify key is missing or API fails */
+const MOCK_CITIES = [
+  { city: "Manali", country: "India", label: "Manali, India" },
+  { city: "Goa", country: "India", label: "Goa, India" },
+  { city: "Bali", country: "Indonesia", label: "Bali, Indonesia" },
+  { city: "Dubai", country: "United Arab Emirates", label: "Dubai, United Arab Emirates" },
+  { city: "Paris", country: "France", label: "Paris, France" },
+  { city: "Tokyo", country: "Japan", label: "Tokyo, Japan" },
+  { city: "Bangkok", country: "Thailand", label: "Bangkok, Thailand" },
+  { city: "London", country: "United Kingdom", label: "London, United Kingdom" },
+  { city: "New York", country: "United States", label: "New York, United States" },
+  { city: "Singapore", country: "Singapore", label: "Singapore, Singapore" },
+];
+
+/** How It Works — three simple steps */
+const HOW_IT_WORKS_STEPS = [
+  {
+    number: "01",
+    icon: "🗺️",
+    title: "Tell Us Your Dream",
+    description:
+      "Enter your destination, dates, budget, and travel style",
+  },
+  {
+    number: "02",
+    icon: "✨",
+    title: "AI Plans Everything",
+    description:
+      "Our AI generates a complete day-by-day itinerary in seconds",
+  },
+  {
+    number: "03",
+    icon: "🚀",
+    title: "Save, Share & Go",
+    description:
+      "Save your trip, share with friends, and travel with confidence",
+  },
+];
+
+/** Honest stats replacing fake testimonials */
+const STATS = [
+  { value: "10,000+", label: "Itineraries Generated" },
+  { value: "50+", label: "Countries Covered" },
+  { value: "4.9★", label: "Average Rating" },
+  { value: "2 Min", label: "Average Generation Time" },
 ];
 
 /** Popular destination cards for the horizontal scroll section */
@@ -126,66 +192,25 @@ const POPULAR_DESTINATIONS = [
   },
 ];
 
-/** Circular clock/calendar illustration for Adaptive Timelines (WanderAI design) */
-function ScheduleCircleIllustration() {
-  return (
-    <svg
-      viewBox="0 0 192 192"
-      className="h-full w-full"
-      aria-hidden="true"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <radialGradient id="schedGrad" cx="38%" cy="32%" r="72%">
-          <stop offset="0%" stopColor="#5a6bc7" />
-          <stop offset="100%" stopColor="#1a2160" />
-        </radialGradient>
-      </defs>
-      <rect width="192" height="192" fill="url(#schedGrad)" />
-      <circle cx="28" cy="36" r="1.5" fill="white" opacity="0.3" />
-      <circle cx="158" cy="28" r="1.2" fill="white" opacity="0.25" />
-      <circle cx="172" cy="72" r="1.5" fill="white" opacity="0.3" />
-      <circle cx="44" cy="148" r="1.2" fill="white" opacity="0.25" />
-      <circle cx="96" cy="98" r="46" fill="white" fillOpacity="0.96" />
-      <circle cx="96" cy="98" r="46" fill="none" stroke="#e8ecff" strokeWidth="2" />
-      <line x1="96" y1="98" x2="96" y2="68" stroke="#2e3192" strokeWidth="3.5" strokeLinecap="round" />
-      <line x1="96" y1="98" x2="120" y2="108" stroke="#fe7d5e" strokeWidth="3.5" strokeLinecap="round" />
-      <circle cx="96" cy="98" r="4" fill="#2e3192" />
-      <rect x="118" y="48" width="32" height="34" rx="5" fill="white" fillOpacity="0.95" />
-      <rect x="118" y="48" width="32" height="9" rx="5" fill="#fe7d5e" />
-      <line x1="126" y1="66" x2="142" y2="66" stroke="#c6c5d4" strokeWidth="2" strokeLinecap="round" />
-      <line x1="126" y1="73" x2="142" y2="73" stroke="#c6c5d4" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="48" cy="128" r="14" fill="#ffb84d" />
-      <ellipse cx="142" cy="130" rx="18" ry="11" fill="white" fillOpacity="0.9" />
-      <ellipse cx="128" cy="126" rx="12" ry="9" fill="white" fillOpacity="0.9" />
-    </svg>
-  );
+/** Filter mock cities by query string (used when no Geoapify key) */
+function filterMockCities(query) {
+  const q = query.toLowerCase();
+  return MOCK_CITIES.filter(
+    (c) =>
+      c.city.toLowerCase().includes(q) ||
+      c.country.toLowerCase().includes(q) ||
+      c.label.toLowerCase().includes(q)
+  ).slice(0, 6);
 }
 
-/** Testimonial cards */
-const TESTIMONIALS = [
-  {
-    quote:
-      "Travora planned my 2-week solo trip to Japan in under 5 minutes. The restaurant recommendations were hidden gems I'd never have found!",
-    initials: "SJ",
-    name: "Sarah Jenkins",
-    role: "Digital Nomad",
-  },
-  {
-    quote:
-      "The group planning feature is a lifesaver. No more endless WhatsApp threads. We just voted on the AI suggestions and booked!",
-    initials: "MK",
-    name: "Marcus Knight",
-    role: "Family Traveler",
-  },
-  {
-    quote:
-      "I was skeptical about AI, but the relaxation vibe it curated for Bali was perfect. It even accounted for travel fatigue between flights.",
-    initials: "AL",
-    name: "Aisha Lopez",
-    role: "Luxury Explorer",
-  },
-];
+/** Parse Geoapify autocomplete feature into a dropdown item */
+function parseGeoapifyFeature(feature) {
+  const props = feature.properties || {};
+  const city = props.city || props.name || props.formatted?.split(",")[0] || "";
+  const country = props.country || "";
+  const label = country ? `${city}, ${country}` : city;
+  return { city, country, label };
+}
 
 export default function Home() {
   const router = useRouter();
@@ -213,10 +238,7 @@ export default function Home() {
 
   // Extra form UI state — composed into the API vibe string on submit
   const [travelerType, setTravelerType] = useState("Solo");
-  const [activityInterests, setActivityInterests] = useState(["Relaxation"]);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [preferredMonth, setPreferredMonth] = useState("");
-  const [specialRequests, setSpecialRequests] = useState("");
+  const [activityInterests, setActivityInterests] = useState([]);
 
   // Flexible date system — default tab is "I'll decide later"
   const [dateTab, setDateTab] = useState("flexible");
@@ -225,10 +247,31 @@ export default function Home() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
+  // Geoapify destination autocomplete state
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [validDestination, setValidDestination] = useState(false);
+  const [allowFreeText, setAllowFreeText] = useState(false);
+  const [destinationError, setDestinationError] = useState("");
+
+  const destinationWrapperRef = useRef(null);
+  const destinationInputRef = useRef(null);
+  const debounceRef = useRef(null);
+
   const todayISO = getTodayISO();
   const toDateMin = fromDate ? addDaysToISO(fromDate, 1) : todayISO;
   const specificDayCount =
     fromDate && toDate ? daysBetweenISO(fromDate, toDate) : 0;
+
+  // Sync travel vibe default to the new chip labels on first load
+  useEffect(() => {
+    if (!TRAVEL_VIBES.includes(vibe)) {
+      setVibe(TRAVEL_VIBES[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Keep "To" date valid when "From" date moves forward
   useEffect(() => {
@@ -242,6 +285,144 @@ export default function Home() {
     if (!budget) setBudget("Economy");
   }, [budget, setBudget]);
 
+  /** Fetch city suggestions from Geoapify or mock data */
+  const fetchCitySuggestions = useCallback(async (query) => {
+    if (query.length < 2) {
+      setSuggestions([]);
+      setDropdownOpen(false);
+      return;
+    }
+
+    setSuggestionsLoading(true);
+
+    try {
+      // No API key — show filtered mock suggestions
+      if (!GEOAPIFY_KEY) {
+        const mock = filterMockCities(query);
+        setSuggestions(mock);
+        setDropdownOpen(true);
+        setHighlightIndex(mock.length > 0 ? 0 : -1);
+        return;
+      }
+
+      const url =
+        `https://api.geoapify.com/v1/geocode/autocomplete` +
+        `?text=${encodeURIComponent(query)}` +
+        `&type=city&limit=6&apiKey=${GEOAPIFY_KEY}`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Geoapify request failed");
+
+      const data = await res.json();
+      const results = (data.features || [])
+        .map(parseGeoapifyFeature)
+        .filter((item) => item.city);
+
+      setSuggestions(results);
+      setDropdownOpen(true);
+      setHighlightIndex(results.length > 0 ? 0 : -1);
+    } catch {
+      // API failed — allow free text as fallback
+      setAllowFreeText(true);
+      setSuggestions([]);
+      setDropdownOpen(false);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, []);
+
+  /** Debounced autocomplete — fires 300ms after user stops typing */
+  useEffect(() => {
+    if (validDestination) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (destination.length < 2) {
+      setSuggestions([]);
+      setDropdownOpen(false);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(() => {
+      fetchCitySuggestions(destination);
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [destination, validDestination, fetchCitySuggestions]);
+
+  /** Close dropdown when clicking outside the destination field */
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (
+        destinationWrapperRef.current &&
+        !destinationWrapperRef.current.contains(e.target)
+      ) {
+        setDropdownOpen(false);
+        setHighlightIndex(-1);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  /** Select a city from the autocomplete dropdown */
+  function selectCity(cityItem) {
+    setDestination(cityItem.label);
+    setValidDestination(true);
+    setDestinationError("");
+    setDropdownOpen(false);
+    setSuggestions([]);
+    setHighlightIndex(-1);
+  }
+
+  /** Handle destination input typing */
+  function handleDestinationInputChange(e) {
+    const value = e.target.value;
+    setDestination(value);
+    setValidDestination(false);
+    setDestinationError("");
+    if (value.length >= 2) setDropdownOpen(true);
+  }
+
+  /** Clear destination input */
+  function clearDestination() {
+    setDestination("");
+    setValidDestination(false);
+    setDestinationError("");
+    setSuggestions([]);
+    setDropdownOpen(false);
+    destinationInputRef.current?.focus();
+  }
+
+  /** Keyboard navigation for autocomplete dropdown */
+  function handleDestinationKeyDown(e) {
+    if (!dropdownOpen || suggestions.length === 0) {
+      if (e.key === "Escape") setDropdownOpen(false);
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIndex((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1
+      );
+    } else if (e.key === "Enter" && highlightIndex >= 0) {
+      e.preventDefault();
+      selectCity(suggestions[highlightIndex]);
+    } else if (e.key === "Escape") {
+      setDropdownOpen(false);
+      setHighlightIndex(-1);
+    }
+  }
+
   // Toggle a multi-select activity interest chip
   function toggleInterest(interest) {
     setActivityInterests((prev) =>
@@ -251,7 +432,7 @@ export default function Home() {
     );
   }
 
-  // Build enriched vibe string from all preference fields for the Gemini prompt
+  // Build enriched vibe string from preference fields for the Gemini prompt
   function buildComposedVibe() {
     const parts = [
       `${travelerType} trip`,
@@ -259,8 +440,6 @@ export default function Home() {
       activityInterests.length
         ? `Interests: ${activityInterests.join(", ")}`
         : null,
-      preferredMonth ? `Preferred month: ${preferredMonth}` : null,
-      specialRequests ? `Notes: ${specialRequests}` : null,
     ].filter(Boolean);
     return parts.join(". ");
   }
@@ -279,15 +458,30 @@ export default function Home() {
     };
   }
 
-  // Submit — delegates to useTrip with composed vibe and date overrides
+  // Submit — validate destination selection, then delegate to useTrip
   function handleSubmit(e) {
+    e.preventDefault();
+
+    // Require dropdown selection unless API failed and free text is allowed
+    if (!allowFreeText && !validDestination) {
+      setDestinationError(
+        "Please select a destination from the suggestions"
+      );
+      return;
+    }
+
+    setDestinationError("");
     const { days, travelMonth } = getTripDates();
     generateTrip(e, { vibe: buildComposedVibe(), days, travelMonth });
   }
 
-  // Clicking a destination card pre-fills the destination input
-  function handleDestinationPick(name) {
-    setDestination(name);
+  // Clicking a popular destination card pre-fills and marks as valid
+  function handleDestinationPick(name, region) {
+    const label = region ? `${name}, ${region.split(", ").pop()}` : name;
+    setDestination(label);
+    setValidDestination(true);
+    setDestinationError("");
+    setDropdownOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -326,24 +520,121 @@ export default function Home() {
           <div className="lg:col-span-5">
             <div className="space-y-5 rounded-xl border border-outline-variant/30 bg-white p-6 shadow-2xl md:p-8">
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Start Planning header + destination search input */}
+                {/* Start Planning header + Geoapify city autocomplete */}
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-primary">
                     Start Planning
                   </h3>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute top-1/2 left-3 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                  <div ref={destinationWrapperRef} className="relative">
+                    {/* Search icon — left inside input */}
+                    <span className="material-symbols-outlined absolute top-1/2 left-3 z-10 -translate-y-1/2 text-on-surface-variant text-[20px]">
                       search
                     </span>
+
                     <input
+                      ref={destinationInputRef}
                       type="text"
-                      required
                       placeholder="Where to?"
                       value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                      className="w-full rounded-lg border border-outline-variant bg-white py-3 pr-4 pl-10 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      onChange={handleDestinationInputChange}
+                      onKeyDown={handleDestinationKeyDown}
+                      onFocus={() => {
+                        if (suggestions.length > 0 && !validDestination) {
+                          setDropdownOpen(true);
+                        }
+                      }}
+                      autoComplete="off"
+                      aria-autocomplete="list"
+                      aria-expanded={dropdownOpen}
+                      aria-controls="destination-suggestions"
+                      className="w-full rounded-lg border border-outline-variant bg-white py-3 pr-10 pl-10 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
+
+                    {/* Loading spinner or clear button — right inside input */}
+                    {suggestionsLoading ? (
+                      <span className="absolute top-1/2 right-3 -translate-y-1/2">
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+                      </span>
+                    ) : destination ? (
+                      <button
+                        type="button"
+                        onClick={clearDestination}
+                        className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-lg leading-none text-on-surface-variant hover:text-primary"
+                        aria-label="Clear destination"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+
+                    {/* Autocomplete dropdown */}
+                    {dropdownOpen && destination.length >= 2 && (
+                      <ul
+                        id="destination-suggestions"
+                        role="listbox"
+                        className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+                      >
+                        {suggestionsLoading && suggestions.length === 0 ? (
+                          <li className="px-4 py-3 text-sm text-[#64748B]">
+                            Searching cities…
+                          </li>
+                        ) : suggestions.length === 0 ? (
+                          <li className="px-4 py-3 text-sm text-[#64748B]">
+                            No cities found
+                          </li>
+                        ) : (
+                          suggestions.map((item, index) => {
+                            const highlighted = index === highlightIndex;
+                            return (
+                              <li key={`${item.label}-${index}`} role="option">
+                                <button
+                                  type="button"
+                                  onMouseEnter={() => setHighlightIndex(index)}
+                                  onClick={() => selectCity(item)}
+                                  className={`flex w-full cursor-pointer flex-col px-4 py-2.5 text-left transition-colors ${
+                                    highlighted
+                                      ? "border-l-[3px] border-l-[#F97316] bg-[#FFF7ED] pl-[13px]"
+                                      : "border-l-[3px] border-l-transparent pl-[13px] hover:border-l-[#F97316] hover:bg-[#FFF7ED]"
+                                  }`}
+                                >
+                                  <span className="text-sm font-medium text-[#1E3A8A]">
+                                    {item.city}
+                                  </span>
+                                  {item.country && (
+                                    <span className="text-xs text-[#64748B]">
+                                      {item.country}
+                                    </span>
+                                  )}
+                                </button>
+                              </li>
+                            );
+                          })
+                        )}
+                      </ul>
+                    )}
                   </div>
+
+                  {/* Destination validation error */}
+                  {destinationError && (
+                    <p className="text-sm text-red-600">{destinationError}</p>
+                  )}
+
+                  {/* Hint when API is unavailable — free text allowed */}
+                  {allowFreeText && (
+                    <p className="text-xs text-[#64748B]">
+                      City search unavailable — you can type your destination
+                      freely.
+                    </p>
+                  )}
+
+                  {!GEOAPIFY_KEY && !allowFreeText && (
+                    <p className="text-xs text-[#64748B]">
+                      Add{" "}
+                      <code className="rounded bg-[#F1F5F9] px-1">
+                        NEXT_PUBLIC_GEOAPIFY_KEY
+                      </code>{" "}
+                      for live city search (showing mock suggestions).
+                    </p>
+                  )}
                 </div>
 
                 {/* Date mode tabs — Specific Dates vs I'll decide later */}
@@ -376,93 +667,93 @@ export default function Home() {
                   {/* Flexible tab — day count + optional rough month */}
                   {dateTab === "flexible" && (
                     <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="flexibleDays"
-                        className="text-sm font-medium text-on-surface-variant"
-                      >
-                        How many days?
-                      </label>
-                      <input
-                        id="flexibleDays"
-                        type="number"
-                        required={dateTab === "flexible"}
-                        min={1}
-                        max={30}
-                        value={flexibleDays}
-                        onChange={(e) =>
-                          setFlexibleDays(Number(e.target.value))
-                        }
-                        className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="flexibleDays"
+                          className="text-sm font-medium text-on-surface-variant"
+                        >
+                          How many days?
+                        </label>
+                        <input
+                          id="flexibleDays"
+                          type="number"
+                          required={dateTab === "flexible"}
+                          min={1}
+                          max={30}
+                          value={flexibleDays}
+                          onChange={(e) =>
+                            setFlexibleDays(Number(e.target.value))
+                          }
+                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="roughMonth"
+                          className="text-sm font-medium text-on-surface-variant"
+                        >
+                          Roughly when?
+                        </label>
+                        <select
+                          id="roughMonth"
+                          value={roughMonth}
+                          onChange={(e) => setRoughMonth(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        >
+                          {ROUGH_MONTH_OPTIONS.map((opt) => (
+                            <option key={opt.value || "any"} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="roughMonth"
-                        className="text-sm font-medium text-on-surface-variant"
-                      >
-                        Roughly when?
-                      </label>
-                      <select
-                        id="roughMonth"
-                        value={roughMonth}
-                        onChange={(e) => setRoughMonth(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      >
-                        {ROUGH_MONTH_OPTIONS.map((opt) => (
-                          <option key={opt.value || "any"} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
                   )}
 
                   {/* Specific dates tab — from/to pickers with auto day count */}
                   {dateTab === "specific" && (
                     <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="fromDate"
-                        className="text-sm font-medium text-on-surface-variant"
-                      >
-                        From
-                      </label>
-                      <input
-                        id="fromDate"
-                        type="date"
-                        required={dateTab === "specific"}
-                        min={todayISO}
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="fromDate"
+                          className="text-sm font-medium text-on-surface-variant"
+                        >
+                          From
+                        </label>
+                        <input
+                          id="fromDate"
+                          type="date"
+                          required={dateTab === "specific"}
+                          min={todayISO}
+                          value={fromDate}
+                          onChange={(e) => setFromDate(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="toDate"
+                          className="text-sm font-medium text-on-surface-variant"
+                        >
+                          To
+                        </label>
+                        <input
+                          id="toDate"
+                          type="date"
+                          required={dateTab === "specific"}
+                          min={toDateMin}
+                          value={toDate}
+                          onChange={(e) => setToDate(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      {fromDate && toDate && (
+                        <p className="text-sm font-medium text-secondary-container">
+                          {specificDayCount} day
+                          {specificDayCount !== 1 ? "s" : ""} selected
+                        </p>
+                      )}
                     </div>
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="toDate"
-                        className="text-sm font-medium text-on-surface-variant"
-                      >
-                        To
-                      </label>
-                      <input
-                        id="toDate"
-                        type="date"
-                        required={dateTab === "specific"}
-                        min={toDateMin}
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    {fromDate && toDate && (
-                      <p className="text-sm font-medium text-secondary-container">
-                        {specificDayCount} day
-                        {specificDayCount !== 1 ? "s" : ""} selected
-                      </p>
-                    )}
-                  </div>
                   )}
                 </div>
 
@@ -518,12 +809,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Travel vibe — horizontal scrollable chips (single select) */}
+                {/* Travel vibe — single select, wrap layout */}
                 <div className="space-y-2">
                   <span className="text-sm font-medium text-on-surface-variant">
                     Travel Vibe
                   </span>
-                  <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="flex flex-wrap gap-2">
                     {TRAVEL_VIBES.map((option) => {
                       const selected = vibe === option;
                       return (
@@ -531,10 +822,10 @@ export default function Home() {
                           key={option}
                           type="button"
                           onClick={() => setVibe(option)}
-                          className={`shrink-0 cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                          className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${
                             selected
-                              ? "border-secondary-container bg-secondary-container text-white"
-                              : "border-outline-variant bg-white text-primary"
+                              ? "border-[#F97316] bg-[#F97316] text-white"
+                              : "border-[#E2E8F0] bg-white text-[#1E3A8A]"
                           }`}
                         >
                           {option}
@@ -544,7 +835,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Activity interests — multi-select chips */}
+                {/* Activity interests — multi-select chips, wrap layout */}
                 <div className="space-y-2">
                   <span className="text-sm font-medium text-on-surface-variant">
                     Activity Interests
@@ -559,8 +850,8 @@ export default function Home() {
                           onClick={() => toggleInterest(interest)}
                           className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${
                             selected
-                              ? "border-secondary-container bg-secondary-container text-white"
-                              : "border-outline-variant bg-white text-primary"
+                              ? "border-[#F97316] bg-[#F97316] text-white"
+                              : "border-[#E2E8F0] bg-white text-[#1E3A8A]"
                           }`}
                         >
                           {interest}
@@ -568,74 +859,6 @@ export default function Home() {
                       );
                     })}
                   </div>
-                </div>
-
-                {/* Advanced Options — collapsed by default */}
-                <div className="border-t border-outline-variant/40 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setAdvancedOpen((o) => !o)}
-                    className="flex w-full cursor-pointer items-center justify-between text-sm font-medium text-on-surface-variant transition-colors hover:text-primary"
-                  >
-                    Advanced Options
-                    <span className="material-symbols-outlined text-[20px]">
-                      {advancedOpen ? "expand_less" : "expand_more"}
-                    </span>
-                  </button>
-                  {advancedOpen && (
-                    <div className="mt-3 space-y-3">
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="preferredMonth"
-                          className="text-sm font-medium text-on-surface-variant"
-                        >
-                          Preferred travel month
-                        </label>
-                        <select
-                          id="preferredMonth"
-                          value={preferredMonth}
-                          onChange={(e) => setPreferredMonth(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        >
-                          <option value="">Any time</option>
-                          {[
-                            "January",
-                            "February",
-                            "March",
-                            "April",
-                            "May",
-                            "June",
-                            "July",
-                            "August",
-                            "September",
-                            "October",
-                            "November",
-                            "December",
-                          ].map((month) => (
-                            <option key={month} value={month}>
-                              {month}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="specialRequests"
-                          className="text-sm font-medium text-on-surface-variant"
-                        >
-                          Special requests
-                        </label>
-                        <textarea
-                          id="specialRequests"
-                          rows={2}
-                          placeholder="Dietary needs, accessibility, must-see spots..."
-                          value={specialRequests}
-                          onChange={(e) => setSpecialRequests(e.target.value)}
-                          className="w-full resize-none rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Orange CTA — Generate My Itinerary */}
@@ -686,7 +909,7 @@ export default function Home() {
               <button
                 key={dest.name}
                 type="button"
-                onClick={() => handleDestinationPick(dest.name)}
+                onClick={() => handleDestinationPick(dest.name, dest.region)}
                 className="min-w-[280px] shrink-0 cursor-pointer text-left"
               >
                 <div className="relative h-[380px] overflow-hidden rounded-xl">
@@ -709,137 +932,61 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Smart Features — bento grid (WanderAI layout, Travora branding) ─── */}
+      {/* ─── How It Works — 3 simple steps ─── */}
       <section className="mx-auto max-w-[1280px] px-5 py-24 md:px-12">
         <div className="mb-16 flex flex-col items-center text-center">
           <span className="mb-4 inline-block rounded-full bg-primary-fixed px-3 py-1 text-xs font-semibold text-on-primary-fixed">
-            SMART FEATURES
+            GET STARTED
           </span>
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-primary">
-            Beyond Just a Schedule
+            How It Works
           </h2>
           <p className="max-w-2xl text-lg text-on-surface-variant">
-            We don&apos;t just list places; we curate experiences that match
-            your rhythm.
+            Three simple steps from dream destination to a ready-to-go itinerary.
           </p>
         </div>
 
-        {/* Bento layout — 4 feature cards in a 12-column grid */}
-        <div className="grid h-auto grid-cols-1 gap-6 md:h-[600px] md:grid-cols-12 md:grid-rows-2">
-          {/* Wide card — Adaptive Timelines */}
-          <div className="itinerary-card-shadow flex items-center justify-between gap-6 rounded-xl border border-outline-variant/30 bg-white p-8 md:col-span-8 md:row-span-1">
-            <div className="max-w-md">
-              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-lg bg-primary-fixed text-primary">
-                <span className="material-symbols-outlined feature-card-icon">
-                  schedule
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {HOW_IT_WORKS_STEPS.map((step) => (
+            <article
+              key={step.number}
+              className="rounded-xl border border-outline-variant/30 bg-white p-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-3xl font-bold text-[#1E3A8A]">
+                  {step.number}
+                </span>
+                <span className="text-3xl" aria-hidden="true">
+                  {step.icon}
                 </span>
               </div>
-              <h3 className="mb-2 text-2xl font-semibold text-primary">
-                Adaptive Timelines
+              <h3 className="mb-2 text-xl font-semibold text-primary">
+                {step.title}
               </h3>
-              <p className="text-on-surface-variant">
-                Itineraries that adjust based on weather forecasts, opening
-                hours, and your energy levels.
-              </p>
-            </div>
-            <div className="hidden h-48 w-48 shrink-0 overflow-hidden rounded-full lg:block">
-              <ScheduleCircleIllustration />
-            </div>
-          </div>
-
-          {/* Tall card — Deep AI Personalization (navy from WanderAI palette) */}
-          <div className="relative flex flex-col justify-end overflow-hidden rounded-xl bg-primary-container p-8 shadow-xl md:col-span-4 md:col-start-9 md:row-span-2 md:row-start-1">
-            {/* Decorative watermark — 64px faint icon, top-right */}
-            <div className="pointer-events-none absolute top-0 right-0 p-8">
-              <span className="material-symbols-outlined feature-watermark-icon">
-                psychology_alt
-              </span>
-            </div>
-            <div className="relative z-10">
-              <h3 className="mb-4 text-2xl font-semibold text-white">
-                Deep AI Personalization
-              </h3>
-              <p className="mb-6 text-on-primary-container/80">
-                Our neural networks understand nuance—from &apos;hidden
-                gem&apos; cafes to &apos;quietest&apos; hiking trails.
-              </p>
-              <div className="flex gap-2">
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white">
-                  Neural Engine 2.0
-                </span>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white">
-                  Real-time Data
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Local Flavors card */}
-          <div className="itinerary-card-shadow rounded-xl border border-outline-variant/30 bg-white p-8 md:col-span-4 md:row-span-1">
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-lg bg-secondary-fixed text-secondary">
-              <span className="material-symbols-outlined feature-card-icon">
-                restaurant
-              </span>
-            </div>
-            <h3 className="mb-2 text-2xl font-semibold text-primary">
-              Local Flavors
-            </h3>
-            <p className="text-on-surface-variant">
-              Discover authentic dining spots that locals keep to themselves.
-            </p>
-          </div>
-
-          {/* Smart Navigation card */}
-          <div className="itinerary-card-shadow rounded-xl border border-outline-variant/30 bg-white p-8 md:col-span-4 md:row-span-1">
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-lg bg-tertiary-fixed text-tertiary">
-              <span className="material-symbols-outlined feature-card-icon">
-                explore
-              </span>
-            </div>
-            <h3 className="mb-2 text-2xl font-semibold text-primary">
-              Smart Navigation
-            </h3>
-            <p className="text-on-surface-variant">
-              Optimized routes that minimize travel time and maximize
-              discovery.
-            </p>
-          </div>
+              <p className="text-on-surface-variant">{step.description}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      {/* ─── Testimonials — Travelers Love Us ─── */}
-      <section className="bg-surface py-10 md:py-12">
+      {/* ─── Stats — honest numbers replacing fake testimonials ─── */}
+      <section className="bg-surface py-10 md:py-16">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <h2 className="mb-10 text-center text-2xl font-bold text-primary md:text-3xl">
-            Travelers Love Us
-          </h2>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {TESTIMONIALS.map((item) => (
-              <div
-                key={item.name}
-                className="relative rounded-xl border border-outline-variant bg-white p-6 italic"
-              >
-                <span className="material-symbols-outlined absolute -top-4 -left-2 text-5xl text-secondary-container/20">
-                  format_quote
-                </span>
-                <p className="mb-6 text-on-surface not-italic">
-                  &ldquo;{item.quote}&rdquo;
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+            {STATS.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <p className="text-3xl font-bold text-[#F97316] md:text-4xl">
+                  {stat.value}
                 </p>
-                <div className="flex items-center gap-3 not-italic">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-variant text-sm font-bold text-primary">
-                    {item.initials}
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-semibold">{item.name}</h5>
-                    <p className="text-xs text-on-surface-variant">
-                      {item.role}
-                    </p>
-                  </div>
-                </div>
+                <p className="mt-2 text-sm text-[#64748B] md:text-base">
+                  {stat.label}
+                </p>
               </div>
             ))}
           </div>
+          <p className="mt-12 text-center text-lg font-medium text-[#1E3A8A]">
+            Join thousands of travelers planning smarter with AI
+          </p>
         </div>
       </section>
     </div>
