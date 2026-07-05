@@ -134,9 +134,9 @@ export default function Navbar() {
             isActive={pathname === "/pricing"}
           />
           <NavLink
-            href="/dashboard"
-            label="Dashboard"
-            isActive={pathname === "/dashboard"}
+            href="/profile"
+            label="Profile"
+            isActive={pathname === "/profile"}
           />
         </div>
 
@@ -202,6 +202,13 @@ export default function Navbar() {
               {dropdownOpen && (
                 <div className="absolute top-full right-0 mt-2 w-52 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-[var(--shadow-modal)]">
                   <Link
+                    href="/profile"
+                    className="block px-4 py-2.5 text-sm text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  <Link
                     href="/my-trips"
                     className="block px-4 py-2.5 text-sm text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     onClick={() => setDropdownOpen(false)}
@@ -266,9 +273,9 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
             />
             <NavLink
-              href="/dashboard"
-              label="Dashboard"
-              isActive={pathname === "/dashboard"}
+              href="/profile"
+              label="Profile"
+              isActive={pathname === "/profile"}
               onClick={() => setMobileOpen(false)}
             />
             {showLoggedIn && !isPro && (
