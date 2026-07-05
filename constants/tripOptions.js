@@ -22,8 +22,8 @@ export const MAX_DAYS = 14;
 /** Default number of days pre-filled in the trip form */
 export const DEFAULT_DAYS = 7;
 
-/** sessionStorage key used to pass generated trip data to the results page */
-export const TRIP_STORAGE_KEY = "wanderaiTrip";
+/** sessionStorage key for generated trip data on /results */
+export const TRIP_STORAGE_KEY = "travoraTrip";
 
 /** Pending API payload while the generating page runs the Gemini request */
 export const PENDING_TRIP_REQUEST_KEY = "travoraPendingTripRequest";

@@ -30,12 +30,11 @@ export default function ResultsPage() {
   const [saveErrorDetail, setSaveErrorDetail] = useState("");
   const [savedTripId, setSavedTripId] = useState(null);
 
-  // Load trip data from sessionStorage on mount (supports legacy key names)
+  // Load trip data from sessionStorage on mount (legacy "wanderaiTrip" fallback)
   useEffect(() => {
     setMounted(true);
     const stored =
       sessionStorage.getItem(TRIP_STORAGE_KEY) ||
-      sessionStorage.getItem("travoraTrip") ||
       sessionStorage.getItem("wanderaiTrip");
     if (stored) {
       setTripData(JSON.parse(stored));

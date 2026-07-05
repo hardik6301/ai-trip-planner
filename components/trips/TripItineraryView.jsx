@@ -48,6 +48,7 @@ import {
   sanitizeTripId,
   shareTripNative,
 } from "@/utils/shareTrip";
+import { downloadTripPdf } from "@/utils/downloadTripPdf";
 
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80";
@@ -260,6 +261,7 @@ export default function TripItineraryView({
   const [regeneratingDay, setRegeneratingDay] = useState(null);
   const [regenerateError, setRegenerateError] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const { showToast } = useToast();
   const activeShareId = sanitizeTripId(shareTripId ?? tripId);
@@ -348,6 +350,24 @@ export default function TripItineraryView({
     const { whatsappText } = getSharePayload();
     openWhatsAppShare(whatsappText);
     showToast("Opening WhatsApp…", "info");
+  }
+
+  /** Download itinerary as a formatted PDF */
+  function handlePdfDownload() {
+    if (pdfBusy || !tripData?.days?.length) return;
+
+    setPdfBusy(true);
+    try {
+      downloadTripPdf(tripData);
+      showToast("PDF downloaded!", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Could not generate PDF",
+        "error"
+      );
+    } finally {
+      setPdfBusy(false);
+    }
   }
 
   async function handleRegenerateDay(dayNumber) {
@@ -544,10 +564,12 @@ export default function TripItineraryView({
               )}
               <button
                 type="button"
-                className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
+                onClick={handlePdfDownload}
+                disabled={pdfBusy || !tripData?.days?.length}
+                className="flex min-h-[40px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                <FileText className="h-3.5 w-3.5" />
-                PDF
+                <FileText className={`h-3.5 w-3.5 ${pdfBusy ? "animate-pulse" : ""}`} />
+                {pdfBusy ? "Generating…" : "Download PDF"}
               </button>
             </div>
           </div>
