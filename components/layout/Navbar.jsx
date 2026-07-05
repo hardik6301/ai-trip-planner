@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Mountain, Sun } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
+import { resolveAvatarUrl, resolveDisplayName } from "@/lib/profile";
 import ProBadge from "@/components/ui/ProBadge";
 
 function NavLink({ href, label, isActive, onClick }) {
@@ -30,6 +31,7 @@ export default function Navbar() {
   const menuRef = useRef(null);
 
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [isPro, setIsPro] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -41,12 +43,14 @@ export default function Navbar() {
 
     if (currentUser) {
       const supabase = createClient();
-      const { isPro: proStatus } = await fetchUserProStatus(
+      const { isPro: proStatus, profile: profileRow } = await fetchUserProStatus(
         supabase,
         currentUser.id
       );
-      setIsPro(proStatus || isProUser(currentUser));
+      setProfile(profileRow);
+      setIsPro(proStatus || isProUser(currentUser, profileRow));
     } else {
+      setProfile(null);
       setIsPro(false);
     }
   }
@@ -98,12 +102,8 @@ export default function Navbar() {
     pathname.startsWith("/results") ||
     pathname.startsWith("/trip/");
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split("@")[0] ||
-    "Traveler";
-
+  const displayName = resolveDisplayName(profile, user);
+  const avatarUrl = resolveAvatarUrl(profile, user);
   const avatarLetter = (displayName || "T").charAt(0).toUpperCase();
   const showLoggedOut = mounted && !user;
   const showLoggedIn = mounted && user;
@@ -182,9 +182,9 @@ export default function Navbar() {
                 aria-expanded={dropdownOpen}
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F472B6] text-sm font-bold text-white">
-                  {user.user_metadata?.avatar_url ? (
+                  {avatarUrl ? (
                     <img
-                      src={user.user_metadata.avatar_url}
+                      src={avatarUrl}
                       alt={displayName}
                       className="h-full w-full rounded-full object-cover"
                     />

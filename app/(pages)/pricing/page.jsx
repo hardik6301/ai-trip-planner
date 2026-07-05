@@ -37,16 +37,18 @@ const PRO_FEATURES = [
 /** FAQ accordion content */
 const FAQ_ITEMS = [
   {
-    question: "Can I cancel anytime?",
-    answer: "Yes, cancel from your profile.",
+    question: "Can I cancel Pro anytime?",
+    answer:
+      "Yes — cancel from your Profile page. You keep saved trips but return to Free limits (5 trips, 3 regenerations per trip). Pro is a one-time payment with no refund.",
+  },
+  {
+    question: "Is Pro a subscription?",
+    answer:
+      "No. Pro is a one-time ₹199 unlock. There are no recurring charges or auto-renewals.",
   },
   {
     question: "What is an unlimited trip?",
-    answer: "Save as many trips as you want.",
-  },
-  {
-    question: "Is there a yearly plan?",
-    answer: "Coming soon with 2 months free.",
+    answer: "Save as many trips as you want while you have Pro active.",
   },
 ];
 
@@ -58,8 +60,8 @@ export default function PricingPage() {
   const [isPro, setIsPro] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
-  // Upgrade button: idle | loading | verifying
   const [upgradeState, setUpgradeState] = useState("idle");
+  const [cancellingPro, setCancellingPro] = useState(false);
 
   /** Load auth user + Pro status from profiles.is_pro */
   const loadUserAndPlan = useCallback(async () => {
@@ -128,7 +130,7 @@ export default function PricingPage() {
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Travora",
-        description: "Pro Monthly Subscription",
+        description: "Travora Pro (one-time unlock)",
         order_id: orderData.orderId,
         prefill: {
           name: displayName,
@@ -197,6 +199,35 @@ export default function PricingPage() {
         err instanceof Error ? err.message : "Could not open checkout",
         "error"
       );
+    }
+  }
+
+  async function handleCancelPro() {
+    if (cancellingPro || !isPro) return;
+
+    const confirmed = window.confirm(
+      "Cancel Pro and return to Free limits (5 trips, 3 regenerations per trip)? Your saved trips stay. No refund for the one-time payment."
+    );
+    if (!confirmed) return;
+
+    setCancellingPro(true);
+
+    try {
+      const res = await fetch("/api/profile/cancel-pro", { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || data.details || "Could not cancel Pro");
+      }
+
+      showToast("Pro cancelled — you're on the Free plan", "success");
+      setIsPro(false);
+      await loadUserAndPlan();
+      router.refresh();
+    } catch (err) {
+      showToast(err.message || "Could not cancel Pro", "error");
+    } finally {
+      setCancellingPro(false);
     }
   }
 
@@ -289,8 +320,11 @@ export default function PricingPage() {
               <span className="text-[40px] font-bold leading-none text-[#0F172A]">
                 ₹199
               </span>
-              <span className="text-sm text-[#64748B]">/month</span>
+              <span className="text-sm text-[#64748B]">one-time</span>
             </div>
+            <p className="mt-2 text-xs text-[#94A3B8]">
+              Pay once, unlock Pro features. Cancel anytime from Profile.
+            </p>
 
             <p className="mt-6 text-sm font-medium text-[#64748B]">
               Everything in free, plus:
@@ -311,13 +345,23 @@ export default function PricingPage() {
             {!mounted ? (
               <div className="mt-8 h-[50px] animate-pulse rounded-xl bg-[#F1F5F9]" />
             ) : isPro ? (
-              <button
-                type="button"
-                disabled
-                className="mt-8 w-full cursor-default rounded-xl bg-emerald-600 py-3.5 text-sm font-semibold text-white"
-              >
-                Current Plan ✓
-              </button>
+              <div className="mt-8 space-y-3">
+                <button
+                  type="button"
+                  disabled
+                  className="w-full cursor-default rounded-xl bg-emerald-600 py-3.5 text-sm font-semibold text-white"
+                >
+                  Current Plan ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelPro}
+                  disabled={cancellingPro}
+                  className="w-full cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-medium text-[#64748B] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60"
+                >
+                  {cancellingPro ? "Cancelling…" : "Cancel Pro"}
+                </button>
+              </div>
             ) : (
               <button
                 type="button"

@@ -2,15 +2,16 @@
 
 /**
  * Travora profile — account overview, travel stats, preferences, subscription.
- * Matches Stitch reference layout; wired to Supabase auth + trips data.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
+  Camera,
   Check,
+  ChevronDown,
   Globe,
   Plane,
   Settings,
@@ -20,12 +21,18 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
+import {
+  CURRENCY_OPTIONS,
+  currencyLabel,
+  resolveAvatarUrl,
+  resolveDisplayName,
+} from "@/lib/profile";
 import ProBadge from "@/components/ui/ProBadge";
 import { useToast } from "@/components/ui/Toast";
 
-const PREFS_KEY = "travoraProfilePrefs";
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-/** Extract country/region from destination string */
 function extractCountry(destination) {
   if (!destination) return null;
   const parts = String(destination)
@@ -35,7 +42,6 @@ function extractCountry(destination) {
   return parts.length > 1 ? parts[parts.length - 1] : parts[0];
 }
 
-/** Most frequent country across saved trips */
 function topRegionFromTrips(trips) {
   const counts = {};
   trips.forEach((trip) => {
@@ -44,24 +50,6 @@ function topRegionFromTrips(trips) {
   });
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   return sorted[0]?.[0] || "—";
-}
-
-/** Read/writes UI preferences from localStorage */
-function loadPrefs() {
-  if (typeof window === "undefined") {
-    return { currency: "INR (₹)", newsletter: true };
-  }
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-  return { currency: "INR (₹)", newsletter: true };
-}
-
-function savePrefs(prefs) {
-  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 }
 
 function formatProDate(iso) {
@@ -73,7 +61,6 @@ function formatProDate(iso) {
   });
 }
 
-/** Small stat card in left column */
 function StatCard({ icon: Icon, label, value, accent }) {
   return (
     <div className="flex items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-[0_2px_12px_rgba(15,23,42,0.04)]">
@@ -92,20 +79,51 @@ function StatCard({ icon: Icon, label, value, accent }) {
   );
 }
 
+/** Upload avatar to Supabase Storage; returns public URL */
+async function uploadAvatar(userId, file) {
+  const supabase = createClient();
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/avatar.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("avatars")
+    .upload(path, file, { upsert: true, contentType: file.type });
+
+  if (error) throw new Error(error.message);
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("avatars").getPublicUrl(path);
+
+  return `${publicUrl}?v=${Date.now()}`;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const fileInputRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [isPro, setIsPro] = useState(false);
   const [trips, setTrips] = useState([]);
-  const [prefs, setPrefs] = useState({ currency: "INR (₹)", newsletter: true });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editAvatarPreview, setEditAvatarPreview] = useState(null);
+  const [editAvatarFile, setEditAvatarFile] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const [cancelProOpen, setCancelProOpen] = useState(false);
+  const [cancellingPro, setCancellingPro] = useState(false);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -121,7 +139,6 @@ export default function ProfilePage() {
     }
 
     setUser(currentUser);
-    setPrefs(loadPrefs());
 
     const { isPro: proStatus, profile: profileRow } = await fetchUserProStatus(
       supabase,
@@ -143,16 +160,12 @@ export default function ProfilePage() {
     loadProfile();
   }, [loadProfile]);
 
-  const displayName =
-    profile?.full_name ||
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split("@")[0] ||
-    "Traveler";
-
+  const displayName = resolveDisplayName(profile, user);
   const email = user?.email || profile?.email || "";
-  const avatarUrl = user?.user_metadata?.avatar_url || profile?.avatar_url;
+  const avatarUrl = resolveAvatarUrl(profile, user);
   const avatarLetter = displayName.charAt(0).toUpperCase();
+  const currency = profile?.currency || "INR";
+  const newsletterOn = profile?.newsletter_opt_in !== false;
 
   const stats = useMemo(() => {
     const totalTrips = trips.length;
@@ -175,53 +188,162 @@ export default function ProfilePage() {
 
   function openEditProfile() {
     setEditName(displayName);
+    setEditAvatarPreview(avatarUrl);
+    setEditAvatarFile(null);
     setEditOpen(true);
+  }
+
+  function closeEditProfile() {
+    if (editAvatarFile && editAvatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(editAvatarPreview);
+    }
+    setEditOpen(false);
+    setEditAvatarFile(null);
+  }
+
+  function handleAvatarPick(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      showToast("Use JPG, PNG, WebP, or GIF", "error");
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      showToast("Image must be under 2 MB", "error");
+      return;
+    }
+
+    if (editAvatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(editAvatarPreview);
+    }
+
+    setEditAvatarFile(file);
+    setEditAvatarPreview(URL.createObjectURL(file));
+    e.target.value = "";
+  }
+
+  async function patchProfile(body) {
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.details || data.error || "Update failed");
+    }
+    return data.profile;
   }
 
   async function handleSaveProfile() {
     if (!user || !editName.trim()) return;
     setSavingProfile(true);
 
-    const supabase = createClient();
-    const name = editName.trim();
+    try {
+      const payload = { full_name: editName.trim() };
 
-    await supabase.from("profiles").upsert(
-      {
-        id: user.id,
-        email: user.email,
-        full_name: name,
-      },
-      { onConflict: "id" }
-    );
+      if (editAvatarFile) {
+        payload.avatar_url = await uploadAvatar(user.id, editAvatarFile);
+      }
 
-    await supabase.auth.updateUser({
-      data: { full_name: name, name },
-    });
+      const updated = await patchProfile(payload);
+      setProfile((p) => ({ ...p, ...updated }));
 
-    setProfile((p) => ({ ...p, full_name: name }));
-    setSavingProfile(false);
-    setEditOpen(false);
-    showToast("Profile updated", "success");
+      // Refresh session so navbar picks up new name/avatar
+      const supabase = createClient();
+      const { data: { user: refreshed } } = await supabase.auth.getUser();
+      if (refreshed) setUser(refreshed);
+
+      closeEditProfile();
+      showToast("Profile updated", "success");
+      router.refresh();
+    } catch (err) {
+      showToast(err.message || "Could not save profile", "error");
+    } finally {
+      setSavingProfile(false);
+    }
   }
 
-  function toggleNewsletter() {
-    const next = { ...prefs, newsletter: !prefs.newsletter };
-    setPrefs(next);
-    savePrefs(next);
+  async function handleCurrencyChange(code) {
+    if (code === currency || savingPrefs) return;
+    setSavingPrefs(true);
+    setCurrencyOpen(false);
+
+    try {
+      const updated = await patchProfile({ currency: code });
+      setProfile((p) => ({ ...p, ...updated }));
+      showToast("Currency updated", "success");
+    } catch (err) {
+      showToast(err.message || "Could not update currency", "error");
+    } finally {
+      setSavingPrefs(false);
+    }
   }
 
-  function handleDeleteAccount() {
-    const confirmed = window.confirm(
-      "Delete your Travora account? This will sign you out. Contact support to permanently remove all data."
-    );
-    if (!confirmed) return;
+  async function handleToggleNewsletter() {
+    if (savingPrefs) return;
+    setSavingPrefs(true);
 
-    createClient()
-      .auth.signOut()
-      .then(() => {
-        showToast("Signed out. Email support to complete account deletion.", "info");
-        router.push("/");
-      });
+    try {
+      const updated = await patchProfile({ newsletter_opt_in: !newsletterOn });
+      setProfile((p) => ({ ...p, ...updated }));
+      showToast(
+        updated.newsletter_opt_in ? "Newsletter enabled" : "Newsletter disabled",
+        "success"
+      );
+    } catch (err) {
+      showToast(err.message || "Could not update preference", "error");
+    } finally {
+      setSavingPrefs(false);
+    }
+  }
+
+  async function handleCancelPro() {
+    setCancellingPro(true);
+
+    try {
+      const res = await fetch("/api/profile/cancel-pro", { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || data.details || "Could not cancel Pro");
+      }
+
+      setIsPro(false);
+      setProfile((p) => ({ ...p, is_pro: false }));
+      setCancelProOpen(false);
+      showToast("Pro cancelled — you're on the Free plan", "success");
+      router.refresh();
+    } catch (err) {
+      showToast(err.message || "Could not cancel Pro", "error");
+    } finally {
+      setCancellingPro(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== "DELETE") return;
+    setDeletingAccount(true);
+
+    try {
+      const res = await fetch("/api/profile/delete-account", { method: "DELETE" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || data.details || "Deletion failed");
+      }
+
+      showToast("Account deleted", "success");
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      showToast(err.message || "Could not delete account", "error");
+    } finally {
+      setDeletingAccount(false);
+      setDeleteOpen(false);
+      setDeleteConfirm("");
+    }
   }
 
   if (loading) {
@@ -235,7 +357,6 @@ export default function ProfilePage() {
   return (
     <div className="min-h-[calc(100vh-72px)] bg-[#F8FAFC] pb-16 pt-8">
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-8 px-6 lg:grid-cols-12">
-        {/* ─── Left column — identity + quick stats ─── */}
         <aside className="space-y-5 lg:col-span-4">
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
             <div className="relative mx-auto mb-4 h-24 w-24">
@@ -289,9 +410,7 @@ export default function ProfilePage() {
           />
         </aside>
 
-        {/* ─── Right column — stats banner, settings, subscription ─── */}
         <div className="space-y-6 lg:col-span-8">
-          {/* Travel stats gradient banner */}
           <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] p-8 text-white shadow-[0_8px_32px_rgba(30,58,138,0.25)]">
             <h2 className="text-2xl font-bold tracking-tight md:text-[28px]">
               Your Travel Stats
@@ -320,7 +439,6 @@ export default function ProfilePage() {
           </section>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {/* Preferences */}
             <section className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-[0_4px_24px_rgba(15,23,42,0.04)]">
               <div className="mb-5 flex items-center gap-2">
                 <Settings className="h-5 w-5 text-[#1E3A8A]" />
@@ -328,32 +446,59 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-4">
+                <div className="relative flex items-center justify-between border-b border-[#F1F5F9] pb-4">
                   <span className="text-sm text-[#64748B]">Currency</span>
-                  <span className="text-sm font-semibold text-[#1E3A8A]">
-                    {prefs.currency}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrencyOpen((o) => !o)}
+                    disabled={savingPrefs}
+                    className="flex cursor-pointer items-center gap-1 text-sm font-semibold text-[#1E3A8A] disabled:opacity-60"
+                  >
+                    {currencyLabel(currency)}
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                  {currencyOpen && (
+                    <div className="absolute top-full right-0 z-10 mt-1 w-36 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg">
+                      {CURRENCY_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.code}
+                          type="button"
+                          onClick={() => handleCurrencyChange(opt.code)}
+                          className={`block w-full cursor-pointer px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] ${
+                            opt.code === currency
+                              ? "font-semibold text-[#1E3A8A]"
+                              : "text-[#64748B]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-4">
                   <span className="text-sm text-[#64748B]">AI Model</span>
                   <span className="text-sm font-semibold text-[#F97316]">
                     Travora AI
                   </span>
                 </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#64748B]">Newsletter</span>
                   <button
                     type="button"
                     role="switch"
-                    aria-checked={prefs.newsletter}
-                    onClick={toggleNewsletter}
-                    className={`relative h-6 w-11 cursor-pointer rounded-full transition-colors ${
-                      prefs.newsletter ? "bg-[#1E3A8A]" : "bg-[#CBD5E1]"
+                    aria-checked={newsletterOn}
+                    disabled={savingPrefs}
+                    onClick={handleToggleNewsletter}
+                    className={`relative h-6 w-11 cursor-pointer rounded-full transition-colors disabled:opacity-60 ${
+                      newsletterOn ? "bg-[#1E3A8A]" : "bg-[#CBD5E1]"
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                        prefs.newsletter ? "left-[22px]" : "left-0.5"
+                        newsletterOn ? "left-[22px]" : "left-0.5"
                       }`}
                     />
                   </button>
@@ -361,7 +506,6 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            {/* Danger zone */}
             <section className="rounded-2xl border border-[#FECACA] bg-white p-6 shadow-[0_4px_24px_rgba(15,23,42,0.04)]">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-red-500" />
@@ -373,7 +517,10 @@ export default function ProfilePage() {
               </p>
               <button
                 type="button"
-                onClick={handleDeleteAccount}
+                onClick={() => {
+                  setDeleteConfirm("");
+                  setDeleteOpen(true);
+                }}
                 className="w-full cursor-pointer rounded-xl border border-red-200 bg-red-50 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
               >
                 Delete Account
@@ -381,7 +528,6 @@ export default function ProfilePage() {
             </section>
           </div>
 
-          {/* Subscription banner */}
           <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#F97316] to-[#FB923C] p-8 text-white shadow-[0_8px_32px_rgba(249,115,22,0.3)]">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex-1">
@@ -390,13 +536,19 @@ export default function ProfilePage() {
                 </h2>
 
                 {isPro ? (
-                  <p className="mt-3 text-sm text-white/95">
-                    You are currently a{" "}
-                    <strong>Pro Member</strong>
-                    {profile?.pro_since
-                      ? `. Pro since ${formatProDate(profile.pro_since)}.`
-                      : "."}
-                  </p>
+                  <>
+                    <p className="mt-3 text-sm text-white/95">
+                      You are currently a <strong>Pro Member</strong>
+                      {profile?.pro_since
+                        ? ` (since ${formatProDate(profile.pro_since)}).`
+                        : "."}{" "}
+                      Pro is a one-time unlock — no recurring charges.
+                    </p>
+                    <p className="mt-2 text-xs text-white/80">
+                      Cancel anytime to return to Free limits. Your saved trips
+                      stay, but new saves follow the 5-trip cap.
+                    </p>
+                  </>
                 ) : (
                   <ul className="mt-4 space-y-2 text-sm text-white/95">
                     {[
@@ -413,12 +565,22 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <Link
-                href="/pricing"
-                className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#F97316] shadow-md transition-colors hover:bg-[#FFF7ED]"
-              >
-                {isPro ? "Manage Subscription" : "Upgrade to Pro"}
-              </Link>
+              {isPro ? (
+                <button
+                  type="button"
+                  onClick={() => setCancelProOpen(true)}
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl border-2 border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                >
+                  Cancel Pro
+                </button>
+              ) : (
+                <Link
+                  href="/pricing"
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#F97316] shadow-md transition-colors hover:bg-[#FFF7ED]"
+                >
+                  Upgrade to Pro
+                </Link>
+              )}
             </div>
           </section>
 
@@ -435,16 +597,48 @@ export default function ProfilePage() {
       {editOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#0F172A]">Edit Profile</h3>
               <button
                 type="button"
-                onClick={() => setEditOpen(false)}
+                onClick={closeEditProfile}
                 className="cursor-pointer rounded-lg p-1 text-[#64748B] hover:bg-[#F1F5F9]"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
+            </div>
+
+            <div className="mb-5 flex flex-col items-center">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="group relative cursor-pointer"
+                aria-label="Change profile photo"
+              >
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#F472B6] text-2xl font-bold text-white">
+                  {editAvatarPreview ? (
+                    <img
+                      src={editAvatarPreview}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    editName.charAt(0).toUpperCase() || "T"
+                  )}
+                </div>
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Camera className="h-6 w-6 text-white" />
+                </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={AVATAR_TYPES.join(",")}
+                className="hidden"
+                onChange={handleAvatarPick}
+              />
+              <p className="mt-2 text-xs text-[#94A3B8]">JPG, PNG or WebP · max 2 MB</p>
             </div>
 
             <label className="mb-1 block text-sm font-medium text-[#64748B]">
@@ -454,14 +648,26 @@ export default function ProfilePage() {
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="mb-5 w-full rounded-xl border border-[#E2E8F0] px-4 py-2.5 text-[#0F172A] outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
+              maxLength={80}
+              className="mb-4 w-full rounded-xl border border-[#E2E8F0] px-4 py-2.5 text-[#0F172A] outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
+            />
+
+            <label className="mb-1 block text-sm font-medium text-[#64748B]">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              disabled
+              className="mb-5 w-full cursor-not-allowed rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-[#94A3B8]"
             />
 
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setEditOpen(false)}
-                className="flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC]"
+                onClick={closeEditProfile}
+                disabled={savingProfile}
+                className="flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -472,6 +678,102 @@ export default function ProfilePage() {
                 className="flex-1 cursor-pointer rounded-xl bg-[#1E3A8A] py-2.5 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
               >
                 {savingProfile ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete account confirmation */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-red-600">Delete Account</h3>
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                className="cursor-pointer rounded-lg p-1 text-[#64748B] hover:bg-[#F1F5F9]"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mb-4 text-sm leading-relaxed text-[#64748B]">
+              This permanently deletes your account, all saved trips, and Pro
+              status. Type <strong className="text-[#0F172A]">DELETE</strong> to
+              confirm.
+            </p>
+
+            <input
+              type="text"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder="Type DELETE"
+              className="mb-5 w-full rounded-xl border border-[#E2E8F0] px-4 py-2.5 text-[#0F172A] outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+            />
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deletingAccount}
+                className="flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount || deleteConfirm !== "DELETE"}
+                className="flex-1 cursor-pointer rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deletingAccount ? "Deleting…" : "Delete forever"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Pro confirmation */}
+      {cancelProOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#0F172A]">Cancel Pro?</h3>
+              <button
+                type="button"
+                onClick={() => setCancelProOpen(false)}
+                className="cursor-pointer rounded-lg p-1 text-[#64748B] hover:bg-[#F1F5F9]"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mb-5 text-sm leading-relaxed text-[#64748B]">
+              You&apos;ll return to the Free plan: 5 saved trips and 3 day
+              regenerations per trip. Your existing trips stay saved. This is a
+              one-time payment — no refund is issued.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelProOpen(false)}
+                disabled={cancellingPro}
+                className="flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
+              >
+                Keep Pro
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelPro}
+                disabled={cancellingPro}
+                className="flex-1 cursor-pointer rounded-xl bg-[#1E3A8A] py-2.5 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+              >
+                {cancellingPro ? "Cancelling…" : "Cancel Pro"}
               </button>
             </div>
           </div>

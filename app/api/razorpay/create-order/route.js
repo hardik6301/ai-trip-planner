@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 // Import the server Supabase client to read the authenticated user session
 import { createClient } from "@/lib/supabase/server";
 
-// Pro monthly price in paise (₹199 × 100)
+// Pro one-time price in paise (₹199 × 100)
 const PRO_AMOUNT_PAISE = 19900;
 // Razorpay currency code for Indian Rupees
 const PRO_CURRENCY = "INR";
 
 /**
  * POST /api/razorpay/create-order
- * Creates a Razorpay order for Travora Pro (₹199/month).
+ * Creates a Razorpay order for Travora Pro (₹199 one-time).
  */
 export async function POST() {
   try {
@@ -63,7 +63,7 @@ export async function POST() {
         receipt,
         notes: {
           user_id: user.id,
-          product: "travora_pro_monthly",
+          product: "travora_pro_onetime",
         },
       }),
     });
