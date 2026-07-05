@@ -48,24 +48,20 @@ function monthYearFromISO(isoDate) {
 
 /** Resolve the flexible-tab month dropdown value to an API-ready string */
 function resolveTravelMonth(value) {
-  if (!value) return null;
-  if (value === "next") {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1);
-    return d.toLocaleString("en-US", { month: "long", year: "numeric" });
-  }
-  return value;
+  return value || null;
 }
 
-/** Build "Roughly when?" options — Next Month + 12 rolling months */
+/** Build "Roughly when?" options — current month + 12 rolling months */
 function buildRoughMonthOptions() {
   const now = new Date();
   const options = [{ value: "", label: "Any time (optional)" }];
-  options.push({ value: "next", label: "Next Month" });
-  for (let i = 1; i <= 12; i++) {
+  for (let i = 0; i <= 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     const label = d.toLocaleString("en-US", { month: "long", year: "numeric" });
-    options.push({ value: label, label });
+    options.push({
+      value: label,
+      label: i === 0 ? `This month (${label})` : label,
+    });
   }
   return options;
 }
@@ -203,7 +199,64 @@ const POPULAR_DESTINATIONS = [
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuBb0pwsfiJ_z71YVRosKF00JDkR8g5AC4Z4GfNaD_DkSiN0XhsnGvmqIyyVo_cGHzPCigNRmivYCKGNsroDTsusqwLGudc-AxsdRXTSeshyAWbjoYtXnVWORT3A-QReBXYoxU8WElqkSBTw3YSFI62NFwQ0TUQbPEi5ubwSKxWPeU3dbhbM8ZweYamGy9-8DYEM62TfaNNcPc9nQi7WOuNFAW7qNngdg6I5NAWq52WViGt1tj-LwHlzFPyA6gNDh_ozWd5OLkVYEXjg",
   },
+  {
+    name: "Bangkok",
+    region: "Thailand",
+    image:
+      "https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&q=80",
+  },
+  {
+    name: "Santorini",
+    region: "Greece",
+    image:
+      "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80",
+  },
+  {
+    name: "Tokyo",
+    region: "Japan",
+    image:
+      "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80",
+  },
+  {
+    name: "Jaipur",
+    region: "Rajasthan, India",
+    image:
+      "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&q=80",
+  },
+  {
+    name: "Maldives",
+    region: "Indian Ocean",
+    image:
+      "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&q=80",
+  },
+  {
+    name: "Rome",
+    region: "Italy",
+    image:
+      "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800&q=80",
+  },
+  {
+    name: "Kerala",
+    region: "India",
+    image:
+      "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&q=80",
+  },
+  {
+    name: "Singapore",
+    region: "Singapore",
+    image:
+      "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&q=80",
+  },
+  {
+    name: "Istanbul",
+    region: "Turkey",
+    image:
+      "https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=800&q=80",
+  },
 ];
+
+/** Cards shown in the collapsed horizontal scroll row */
+const POPULAR_PREVIEW_COUNT = 5;
 
 /** Filter mock destinations by query string (used when no Geoapify key) */
 function filterMockCities(query) {
@@ -425,6 +478,9 @@ export default function Home() {
   // Extra form UI state — composed into the API vibe string on submit
   const [travelerType, setTravelerType] = useState("Solo");
   const [activityInterests, setActivityInterests] = useState([]);
+
+  // Popular destinations — collapsed scroll row vs expanded grid
+  const [showAllDestinations, setShowAllDestinations] = useState(false);
 
   // Flexible date system — default tab is "I'll decide later"
   const [dateTab, setDateTab] = useState("flexible");
@@ -1087,40 +1143,74 @@ export default function Home() {
             </div>
             <button
               type="button"
-              className="hidden cursor-pointer items-center gap-1 text-sm font-bold text-secondary-container sm:flex"
+              onClick={() => setShowAllDestinations((v) => !v)}
+              className="flex cursor-pointer items-center gap-1 text-sm font-bold text-secondary-container transition-colors hover:text-secondary"
+              aria-expanded={showAllDestinations}
             >
-              View All
+              {showAllDestinations ? "Show Less" : "View All"}
               <span className="material-symbols-outlined text-[18px]">
-                arrow_forward
+                {showAllDestinations ? "expand_less" : "arrow_forward"}
               </span>
             </button>
           </div>
 
-          <div className="flex gap-6 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {POPULAR_DESTINATIONS.map((dest) => (
-              <button
-                key={dest.name}
-                type="button"
-                onClick={() => handleDestinationPick(dest.name, dest.region)}
-                className="min-w-[280px] shrink-0 cursor-pointer text-left"
-              >
-                <div className="relative h-[380px] overflow-hidden rounded-xl">
-                  <img
-                    src={dest.image}
-                    alt={dest.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                  <div className="absolute bottom-0 left-0 p-4 text-white">
-                    <h4 className="text-lg font-bold">{dest.name}</h4>
-                    <p className="text-sm text-white/80">{dest.region}</p>
+          {showAllDestinations ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
+              {POPULAR_DESTINATIONS.map((dest) => (
+                <button
+                  key={dest.name}
+                  type="button"
+                  onClick={() => handleDestinationPick(dest.name, dest.region)}
+                  className="cursor-pointer text-left"
+                >
+                  <div className="relative h-[220px] overflow-hidden rounded-xl md:h-[280px]">
+                    <img
+                      src={dest.image}
+                      alt={dest.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-4 text-white">
+                      <h4 className="text-lg font-bold">{dest.name}</h4>
+                      <p className="text-sm text-white/80">{dest.region}</p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex gap-6 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {POPULAR_DESTINATIONS.slice(0, POPULAR_PREVIEW_COUNT).map(
+                (dest) => (
+                  <button
+                    key={dest.name}
+                    type="button"
+                    onClick={() =>
+                      handleDestinationPick(dest.name, dest.region)
+                    }
+                    className="min-w-[280px] shrink-0 cursor-pointer text-left"
+                  >
+                    <div className="relative h-[380px] overflow-hidden rounded-xl">
+                      <img
+                        src={dest.image}
+                        alt={dest.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute bottom-0 left-0 p-4 text-white">
+                        <h4 className="text-lg font-bold">{dest.name}</h4>
+                        <p className="text-sm text-white/80">{dest.region}</p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              )}
+            </div>
+          )}
         </div>
       </section>
 
