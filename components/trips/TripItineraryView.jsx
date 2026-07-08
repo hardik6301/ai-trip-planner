@@ -215,6 +215,52 @@ function formatBudgetDisplay(estimate, metaBudget, vibe) {
   };
 }
 
+/** Extract the first numeric amount from a cost/budget string ("₹1,500", "approx ฿300") */
+function parseAmount(str) {
+  if (!str) return null;
+  const cleaned = String(str).replace(/,/g, "");
+  const match = cleaned.match(/\d+(?:\.\d+)?/);
+  return match ? parseFloat(match[0]) : null;
+}
+
+/** Sum all activity costs and compare against the trip's budget estimate */
+function computePlannedSpend(days, budgetEstimate) {
+  let total = 0;
+  let found = false;
+  let symbol = "";
+
+  days?.forEach((day) => {
+    PERIODS.forEach((p) => {
+      const cost = day[p.key]?.cost;
+      const amount = parseAmount(cost);
+      if (amount != null) {
+        total += amount;
+        found = true;
+        if (!symbol) {
+          const sym = String(cost).match(/[₹$€£¥฿]/);
+          if (sym) symbol = sym[0];
+        }
+      }
+    });
+  });
+
+  // Lower bound of the estimate, ignoring parenthetical notes like "(excludes flights)"
+  const budgetCore = String(budgetEstimate || "").replace(/\([^)]*\)/g, "");
+  const budgetLow =
+    parseAmount(budgetCore.split(/[-–—]/)[0]) ?? parseAmount(budgetCore);
+
+  if (!found || !budgetLow) {
+    return { title: "—", percentage: null };
+  }
+
+  const percentage = Math.min(100, Math.round((total / budgetLow) * 100));
+  const locale = symbol === "₹" ? "en-IN" : "en-US";
+  return {
+    title: `${symbol}${total.toLocaleString(locale)}`,
+    percentage,
+  };
+}
+
 const BUDGET_INFO_ITEMS = [
   "AI estimated cost based on your trip preferences",
   "Includes hotels, activities, food and local transport",
@@ -232,6 +278,8 @@ export default function TripItineraryView({
   onTripDataChange = null,
   isPro = false,
   canRegenerate = true,
+  aiFlashDays = [],
+  aiBadgeDays = [],
 }) {
   const { tripMeta } = tripData;
   const destination = capitalizeDestination(tripData.destination);
@@ -250,6 +298,10 @@ export default function TripItineraryView({
   const budget = tripData.totalBudgetEstimate || tripMeta?.budget || "₹42,500";
   const budgetCap = tripMeta?.budget || "₹50,000";
   const budgetDisplay = formatBudgetDisplay(budget, budgetCap, vibeShort);
+  const plannedSpend = computePlannedSpend(
+    tripData.days,
+    tripData.totalBudgetEstimate || tripMeta?.budget
+  );
 
   const [activeDay, setActiveDay] = useState(1);
   const [budgetInfoOpen, setBudgetInfoOpen] = useState(false);
@@ -669,9 +721,10 @@ export default function TripItineraryView({
           />
           <StatCard
             emoji="💰"
-            label="Budget Progress"
-            title={budgetDisplay.progressTitle}
-            progress={85}
+            label="Planned Spend"
+            title={plannedSpend.title}
+            progress={plannedSpend.percentage}
+            progressCaption="of estimated budget"
           />
         </div>
 
@@ -823,6 +876,14 @@ export default function TripItineraryView({
               const dayCostTotal = sumDayCost(day);
               const slots = PERIODS.filter((p) => day[p.key]);
               const DayIcon = DAY_ICONS[dayIndex % DAY_ICONS.length];
+              // AI chat editor highlight state for this day card
+              const isAiFlash = aiFlashDays.includes(day.day);
+              const hasAiBadge = aiBadgeDays.includes(day.day);
+              const aiBadge = hasAiBadge && (
+                <span className="absolute -top-2.5 right-4 z-10 rounded-full bg-[#F97316] px-2.5 py-0.5 text-[10px] font-bold text-white shadow">
+                  ✓ Updated by AI
+                </span>
+              );
 
               if (!isExpanded) {
                 return (
@@ -831,8 +892,9 @@ export default function TripItineraryView({
                     type="button"
                     id={`day-${day.day}`}
                     onClick={() => toggleDay(day.day)}
-                    className="scroll-mt-28 mb-3 flex w-full cursor-pointer items-center gap-4 rounded-xl bg-[#F1F5F9] px-4 py-4 text-left hover:bg-[#E2E8F0] md:px-5"
+                    className={`scroll-mt-28 relative mb-3 flex w-full cursor-pointer items-center gap-4 rounded-xl bg-[#F1F5F9] px-4 py-4 text-left transition-shadow duration-700 hover:bg-[#E2E8F0] md:px-5 ${isAiFlash ? "ai-day-flash" : ""}`}
                   >
+                    {aiBadge}
                     <div className="timeline-day-node !h-10 !w-10">
                       <DayIcon className="h-5 w-5" />
                     </div>
@@ -867,8 +929,9 @@ export default function TripItineraryView({
                 <article
                   key={day.day}
                   id={`day-${day.day}`}
-                  className="relative mb-12 scroll-mt-28"
+                  className={`relative mb-12 scroll-mt-28 rounded-xl transition-shadow duration-700 ${isAiFlash ? "ai-day-flash" : ""}`}
                 >
+                  {aiBadge}
                   <div
                     className="itinerary-timeline-rail pointer-events-none absolute top-[44px] bottom-8 left-[21px]"
                     aria-hidden="true"
@@ -1066,6 +1129,7 @@ function StatCard({
   title,
   subtitle,
   progress,
+  progressCaption,
   tripStats,
   loading = false,
 }) {
@@ -1133,6 +1197,10 @@ function StatCard({
             {progress}%
           </span>
         </div>
+      )}
+
+      {progress != null && progressCaption && (
+        <p className="mt-1.5 text-[10px] text-[#64748B]">{progressCaption}</p>
       )}
     </div>
   );

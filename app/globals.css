@@ -206,6 +206,13 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+/* AI chat editor — orange border flash on day cards that were just updated.
+   Uses a box-shadow ring (visually a 2px solid #F97316 border) so the layout
+   never shifts; removing the class fades it out via the card's shadow transition. */
+.ai-day-flash {
+  box-shadow: 0 0 0 2px #f97316;
+}
+
 /* AI chat FAB — expanding ripple rings to draw attention */
 @keyframes chat-fab-ripple {
   0% {

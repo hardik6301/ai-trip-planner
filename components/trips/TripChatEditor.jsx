@@ -26,11 +26,41 @@ const SUGGESTIONS = [
   "Adjust for kids 👶",
 ];
 
+/** JSON.stringify with sorted keys so key order differences don't count as changes */
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** Compare old vs new days and return the day numbers that actually changed */
+function diffChangedDays(oldDays = [], newDays = []) {
+  const oldByDay = new Map(oldDays.map((d) => [d.day, stableStringify(d)]));
+  return newDays
+    .filter((d) => oldByDay.get(d.day) !== stableStringify(d))
+    .map((d) => d.day);
+}
+
+/** Format day numbers as "Day 1", "Day 1 and Day 3", "Day 1, Day 2 and Day 4" */
+function formatDayList(dayNumbers) {
+  const labels = dayNumbers.map((n) => `Day ${n}`);
+  if (labels.length === 1) return labels[0];
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
 export default function TripChatEditor({
   tripData,
   destination,
   isPro,
   onTripDataChange,
+  onDaysUpdated = null,
   tripId = null,
 }) {
   // Whether the chat popup is open
@@ -84,8 +114,16 @@ export default function TripChatEditor({
         throw new Error(data.error || data.details || "Something went wrong");
       }
 
+      // Work out which days actually changed so we can highlight them
+      const changedDays = diffChangedDays(tripData?.days, data.itinerary?.days);
+
       // Apply the updated itinerary — day cards re-render from this state
       onTripDataChange?.(data.itinerary);
+
+      // Tell the page which day cards to flash / badge / scroll to
+      if (changedDays.length > 0) {
+        onDaysUpdated?.(changedDays);
+      }
 
       // Persist the edit to the saved trip when one exists
       if (tripId) {
@@ -98,10 +136,14 @@ export default function TripChatEditor({
         });
       }
 
-      // Confirm the change in the conversation
+      // Confirm the change, naming the exact days that were modified
+      const confirmation =
+        changedDays.length > 0
+          ? `Done! I updated ${formatDayList(changedDays)} — check the highlighted card${changedDays.length > 1 ? "s" : ""} on the left. ${data.changeSummary}`
+          : `Done! ${data.changeSummary}`;
       setChatMessages((prev) => [
         ...prev,
-        { role: "ai", content: `Done! ${data.changeSummary}` },
+        { role: "ai", content: confirmation },
       ]);
     } catch (err) {
       // Show the error as an AI message so the user can retry

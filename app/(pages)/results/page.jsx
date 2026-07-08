@@ -5,7 +5,7 @@
  * Reads trip data from sessionStorage and supports saving to Supabase.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bookmark, Check } from "lucide-react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -70,6 +70,33 @@ export default function ResultsPage() {
     setTripData(next);
     sessionStorage.setItem(TRIP_STORAGE_KEY, JSON.stringify(next));
   }
+
+  // Day cards recently modified by the AI chat editor
+  const [aiFlashDays, setAiFlashDays] = useState([]); // orange border flash (1.5s)
+  const [aiBadgeDays, setAiBadgeDays] = useState([]); // "✓ Updated by AI" badge (3s)
+  const aiTimersRef = useRef([]);
+
+  // Highlight + badge the changed day cards, then scroll the first one into view
+  function handleAiDaysUpdated(days) {
+    aiTimersRef.current.forEach(clearTimeout);
+    setAiFlashDays(days);
+    setAiBadgeDays(days);
+    aiTimersRef.current = [
+      setTimeout(() => setAiFlashDays([]), 1500),
+      setTimeout(() => setAiBadgeDays([]), 3000),
+    ];
+    // Wait a frame so the updated cards are painted before scrolling
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`day-${Math.min(...days)}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  // Clear pending highlight timers on unmount
+  useEffect(() => {
+    return () => aiTimersRef.current.forEach(clearTimeout);
+  }, []);
 
   // Save the current itinerary to Supabase via the API
   async function handleSave() {
@@ -234,6 +261,8 @@ export default function ResultsPage() {
         onTripDataChange={handleTripDataChange}
         isPro={isPro}
         canRegenerate={userLoggedIn}
+        aiFlashDays={aiFlashDays}
+        aiBadgeDays={aiBadgeDays}
         saveButton={renderSaveButton()}
         footerExtra={
           <div className="space-y-3 text-center">
@@ -264,6 +293,7 @@ export default function ResultsPage() {
         destination={tripData.destination}
         isPro={isPro}
         onTripDataChange={handleTripDataChange}
+        onDaysUpdated={handleAiDaysUpdated}
         tripId={savedTripId}
       />
     </div>
