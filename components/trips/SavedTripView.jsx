@@ -40,6 +40,7 @@ export default function SavedTripView({ trip, ownerId }) {
       onTripDataChange={handleTripDataChange}
       isPro={isPro}
       canRegenerate={isOwner}
+      expensesHref={isOwner && isPro ? `/trip/${trip.id}/expenses` : null}
       heroBadge={isOwner ? "AI Optimized Itinerary" : "Shared Itinerary"}
       saveButton={false}
       footerExtra={

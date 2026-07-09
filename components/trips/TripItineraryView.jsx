@@ -280,6 +280,7 @@ export default function TripItineraryView({
   canRegenerate = true,
   aiFlashDays = [],
   aiBadgeDays = [],
+  expensesHref = null,
 }) {
   const { tripMeta } = tripData;
   const destination = capitalizeDestination(tripData.destination);
@@ -649,6 +650,16 @@ export default function TripItineraryView({
                 <FileText className={`h-3.5 w-3.5 ${pdfBusy ? "animate-pulse" : ""}`} />
                 {pdfBusy ? "Generating…" : "Download PDF"}
               </button>
+              {expensesHref && (
+                <Link
+                  href={expensesHref}
+                  className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] px-3 py-2 text-xs font-semibold text-[#F97316] transition-colors hover:bg-[#F97316] hover:text-white"
+                >
+                  <Wallet className="h-3.5 w-3.5" />
+                  Expense Tracker
+                  <ProBadge className="ml-1 scale-90" />
+                </Link>
+              )}
             </div>
           </div>
 
