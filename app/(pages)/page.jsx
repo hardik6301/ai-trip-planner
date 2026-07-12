@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTrip } from "@/hooks/useTrip";
+import { useDebounce } from "@/hooks/useDebounce";
 import { parseAuthErrorFromHash } from "@/utils/parseAuthError";
 
 // Original WanderAI Dolomites hero (stitch_wanderai_travel_planner/wanderai_home)
@@ -500,7 +501,9 @@ export default function Home() {
 
   const destinationWrapperRef = useRef(null);
   const destinationInputRef = useRef(null);
-  const debounceRef = useRef(null);
+
+  // Debounce destination input — Geoapify fires only after 300ms of no typing
+  const debouncedDestination = useDebounce(destination, 300);
 
   const todayISO = getTodayISO();
   const toDateMin = fromDate ? addDaysToISO(fromDate, 1) : todayISO;
@@ -562,27 +565,19 @@ export default function Home() {
     }
   }, []);
 
-  /** Debounced autocomplete — fires 300ms after user stops typing */
+  /** Fetch suggestions when debounced destination changes (not on every keystroke) */
   useEffect(() => {
     if (validDestination) return;
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (destination.length < 2) {
+    if (debouncedDestination.length < 2) {
       setSuggestions([]);
       setDropdownOpen(false);
       setSuggestionsLoading(false);
       return;
     }
 
-    debounceRef.current = setTimeout(() => {
-      fetchCitySuggestions(destination);
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [destination, validDestination, fetchCitySuggestions]);
+    fetchCitySuggestions(debouncedDestination);
+  }, [debouncedDestination, validDestination, fetchCitySuggestions]);
 
   /** Close dropdown when clicking outside the destination field */
   useEffect(() => {
