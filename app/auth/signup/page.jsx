@@ -34,10 +34,12 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
+    // Confirmation link must return to this production/local origin, not a stale Site URL
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: fullName,
         },

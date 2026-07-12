@@ -398,14 +398,44 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
   const destination = capitalizeDestination(trip.destination);
   const budget = getTripBudget(trip);
   const draft = isDraftTrip(trip);
-  const coverSrc = getTripCoverUrl(trip.destination);
 
-  const [imgSrc, setImgSrc] = useState(coverSrc);
+  const [imgSrc, setImgSrc] = useState(null);
+  const [imgLoading, setImgLoading] = useState(!draft);
+
+  // Real destination cover via place-image API
+  useEffect(() => {
+    if (draft) return;
+    let cancelled = false;
+    setImgLoading(true);
+
+    const params = new URLSearchParams({
+      place: trip.destination || "",
+      activity: "city landmark",
+      destination: trip.destination || "",
+    });
+
+    fetch(`/api/place-image?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setImgSrc(data.url || getTripCoverUrl(trip.destination));
+      })
+      .catch(() => {
+        if (!cancelled) setImgSrc(getTripCoverUrl(trip.destination));
+      })
+      .finally(() => {
+        if (!cancelled) setImgLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trip.destination, draft]);
 
   return (
     <article className="group overflow-hidden rounded-xl border border-[#E2E8F0]/60 bg-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
       {/* ─── Cover image area ─── */}
-      <div className="relative h-[200px] w-full overflow-hidden">
+      <div className="relative h-[200px] w-full overflow-hidden bg-[#E2E8F0]">
         {draft ? (
           /* Draft placeholder — dashed border style from reference */
           <div className="flex h-full w-full flex-col items-center justify-center border-b border-dashed border-[#CBD5E1] bg-[#F1F5F9]">
@@ -414,6 +444,8 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
               Draft — no cover yet
             </span>
           </div>
+        ) : imgLoading || !imgSrc ? (
+          <div className="h-full w-full animate-pulse bg-[#CBD5E1]/70" />
         ) : (
           <img
             src={imgSrc}

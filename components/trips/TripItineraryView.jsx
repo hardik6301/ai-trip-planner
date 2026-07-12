@@ -19,6 +19,7 @@ import {
   Clock,
   CloudRain,
   Cross,
+  ExternalLink,
   FileText,
   Footprints,
   Heart,
@@ -49,7 +50,7 @@ import {
   shareTripNative,
 } from "@/utils/shareTrip";
 import { downloadTripPdf } from "@/utils/downloadTripPdf";
-import ActivityMapEmbed from "@/components/trips/ActivityMapEmbed";
+import { getGoogleMapsLink } from "@/utils/googleMaps";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
 import { currencySymbol, parseTripVibe } from "@/lib/destinationLive";
 
@@ -319,6 +320,8 @@ export default function TripItineraryView({
   const [regenerateError, setRegenerateError] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  // Real destination photo for the hero (not the hardcoded mountain stock image)
+  const [heroImage, setHeroImage] = useState(DEFAULT_HERO);
 
   const { showToast } = useToast();
   const activeShareId = sanitizeTripId(shareTripId ?? tripId);
@@ -328,6 +331,32 @@ export default function TripItineraryView({
   const { liveData, loading: liveLoading } = useTripLiveData(
     tripData.destination
   );
+
+  // Load a real photo of this destination for the hero banner
+  useEffect(() => {
+    const dest = tripData.destination;
+    if (!dest) return;
+
+    let cancelled = false;
+    const params = new URLSearchParams({
+      place: dest,
+      activity: "city skyline landmark",
+      destination: dest,
+    });
+
+    fetch(`/api/place-image?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.url) setHeroImage(data.url);
+      })
+      .catch(() => {
+        /* keep DEFAULT_HERO */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tripData.destination]);
 
   const tripVibe = tripVibeParsed;
 
@@ -542,8 +571,8 @@ export default function TripItineraryView({
         {/* ─── Hero ─── */}
         <section className="relative h-[400px] overflow-hidden rounded-[20px] shadow-soft md:h-[420px]">
           <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url('${DEFAULT_HERO}')` }}
+            className="absolute inset-0 bg-cover bg-center transition-[background-image] duration-500"
+            style={{ backgroundImage: `url('${heroImage}')` }}
             role="img"
             aria-label={destination}
           />
@@ -1001,6 +1030,10 @@ export default function TripItineraryView({
                       slot,
                       period
                     );
+                    const mapsUrl = getGoogleMapsLink(
+                      slot.place,
+                      tripData.destination
+                    );
 
                     return (
                       <div key={period.key} className="relative flex gap-5">
@@ -1058,11 +1091,18 @@ export default function TripItineraryView({
                                 <CategoryIcon className="h-3.5 w-3.5" />
                                 {label}
                               </span>
+                              {mapsUrl && (
+                                <a
+                                  href={mapsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1 text-[11px] font-semibold text-[#1E3A8A] transition-colors hover:bg-white hover:border-[#CBD5E1]"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Maps
+                                </a>
+                              )}
                             </div>
-                            <ActivityMapEmbed
-                              place={slot.place}
-                              destination={tripData.destination}
-                            />
                           </div>
                         </div>
                       </div>
@@ -1120,19 +1160,51 @@ export default function TripItineraryView({
 }
 
 function ActivityImage({ place, activity, destination }) {
-  const [src, setSrc] = useState(() =>
-    getPlaceImage(place, activity, destination)
-  );
+  const [src, setSrc] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    const params = new URLSearchParams({
+      place: place || "",
+      activity: activity || "",
+      destination: destination || "",
+    });
+
+    fetch(`/api/place-image?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setSrc(data.url || PLACE_IMAGE_FALLBACK);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSrc(getPlaceImage(place, activity, destination));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [place, activity, destination]);
 
   return (
-    <div className="h-[140px] w-full shrink-0 overflow-hidden rounded-xl sm:h-[148px] sm:w-[148px]">
-      <img
-        src={src}
-        alt={place}
-        loading="lazy"
-        className="h-full w-full object-cover"
-        onError={() => setSrc(PLACE_IMAGE_FALLBACK)}
-      />
+    <div className="h-[140px] w-full shrink-0 overflow-hidden rounded-xl bg-[#E2E8F0] sm:h-[148px] sm:w-[148px]">
+      {loading || !src ? (
+        <div className="h-full w-full animate-pulse bg-[#CBD5E1]/60" aria-hidden="true" />
+      ) : (
+        <img
+          src={src}
+          alt={place || activity || "Activity"}
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={() => setSrc(PLACE_IMAGE_FALLBACK)}
+        />
+      )}
     </div>
   );
 }
