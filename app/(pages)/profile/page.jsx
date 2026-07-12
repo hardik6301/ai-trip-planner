@@ -552,9 +552,9 @@ export default function ProfilePage() {
                 ) : (
                   <ul className="mt-4 space-y-2 text-sm text-white/95">
                     {[
-                      "Unlimited saved trips",
-                      "Unlimited day regenerations",
-                      "AI chat editor & budget analytics",
+                      "Unlimited saved trips & regenerations",
+                      "AI chat editor & expense tracker",
+                      "Calendar export & offline travel pack",
                     ].map((item) => (
                       <li key={item} className="flex items-center gap-2">
                         <Check className="h-4 w-4 shrink-0" />
@@ -587,7 +587,7 @@ export default function ProfilePage() {
           {!isPro && (
             <p className="flex items-center justify-center gap-2 text-center text-sm text-[#64748B]">
               <Sparkles className="h-4 w-4 text-[#F97316]" />
-              Pro unlocks unlimited trips, regenerations, and priority AI.
+              Pro unlocks unlimited trips, AI chat editor, expenses, and offline packs.
             </p>
           )}
         </div>

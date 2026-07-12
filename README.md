@@ -1,38 +1,120 @@
-# Travora
+# Travora — AI Trip Planner
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+**Live:** [https://travora-ai-app.vercel.app](https://travora-ai-app.vercel.app)  
+**Repo:** [hardik6301/ai-trip-planner](https://github.com/hardik6301/ai-trip-planner)
 
-## Getting Started
+Travora is a full-stack AI travel SaaS. Users describe a trip, Gemini generates a day-by-day itinerary, and Pro users can edit it by chat, track expenses, export to calendar, and download an offline travel pack.
 
-First, run the development server:
+Built as a portfolio / resume project demonstrating freemium SaaS patterns, real payments, and production auth.
+
+---
+
+## Features
+
+### Free
+- AI itinerary generation (Gemini 2.5 Flash)
+- Save up to **5** trips (server-enforced)
+- **3** day regenerations per trip
+- PDF export, share links, WhatsApp share
+- Google Maps links on activities
+- Live weather + currency
+- Real destination photos (Wikipedia / Wikimedia)
+- Debounced Geoapify city autocomplete
+- Dark / light theme
+
+### Pro (₹199 one-time via Razorpay)
+- Unlimited trips & regenerations
+- **AI Chat Editor** — “Make Day 2 more relaxing”
+- Expense tracker + category donut + AI spend insight
+- Custom activity builder
+- Google Calendar export (`.ics`)
+- Offline travel pack (PDF with QR codes + map links)
+
+---
+
+## Tech stack
+
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 16 (App Router) |
+| UI | Tailwind CSS v4, Lucide |
+| Auth + DB | Supabase (Auth, Postgres, RLS, Storage) |
+| AI | Google Gemini (`gemini-2.5-flash`) |
+| Payments | Razorpay (test / live) |
+| Maps | Google Maps links + Embed API (optional) |
+| Places search | Geoapify autocomplete |
+| Live data | Open-Meteo, Frankfurter |
+| Hosting | Vercel |
+
+---
+
+## Local setup
+
+```bash
+git clone https://github.com/hardik6301/ai-trip-planner.git
+cd ai-trip-planner
+npm install
+```
+
+Create `.env.local` (never commit this file):
+
+```bash
+GEMINI_API_KEY=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+NEXT_PUBLIC_GEOAPIFY_KEY=
+NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY=   # optional
+```
+
+Run Supabase SQL migrations in `supabase/migrations/` (including `012_expenses.sql`).
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 60-second demo script (interviews)
 
-## Learn More
+> Use a Pro account (or set `profiles.is_pro = true` in Supabase for demos).
 
-To learn more about Next.js, take a look at the following resources:
+1. **Home (0:00–0:15)** — Search “Bangkok”, pick dates/budget/vibe, generate. Show the loading skeleton.
+2. **Results (0:15–0:25)** — Point out real hero photo, weather/currency, day cards, Maps button.
+3. **AI Chat (0:25–0:40)** — Open orange chat FAB → “Make Day 2 more relaxing” → highlight flash on updated day.
+4. **Pro tools (0:40–0:50)** — Save trip → Expense Tracker → add an expense → show donut. Or Calendar / Offline Pack from the budget card.
+5. **Close (0:50–1:00)** — “Freemium limits are enforced in API routes, not just the UI. Auth is Supabase; payments are Razorpay.”
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**One-liner for resume:**  
+*Full-stack AI trip planner with Gemini itineraries, freemium gating, Razorpay unlock, chat-based editing, and expense analytics — deployed on Vercel.*
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Key folders
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```text
+app/(pages)/          # Home, results, my-trips, pricing, profile, expenses
+app/api/              # Gemini, Razorpay, chat-editor, place-image, expenses
+components/trips/     # Itinerary view, chat editor, saved trip wrapper
+lib/                  # Gemini client, plan limits, Supabase helpers
+supabase/migrations/  # Profiles, trips, expenses, RLS
+utils/                # PDF, ICS, offline pack, maps, images
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Notes
+
+- Pro is a **one-time** unlock, not a subscription (pricing UI matches this).
+- Razorpay Indian accounts may block international cards — use test UPI `success@razorpay` in test mode.
+- Supabase free email confirmation can be unreliable; disable confirm-email for demos or add custom SMTP.
+
+---
+
+## License
+
+Private portfolio project — All rights reserved.

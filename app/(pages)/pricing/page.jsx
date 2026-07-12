@@ -13,25 +13,27 @@ import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
 import { loadRazorpayScript } from "@/utils/loadRazorpay";
 import { useToast } from "@/components/ui/Toast";
 
-/** Free tier feature list */
+/** Free tier feature list — only features that actually ship */
 const FREE_FEATURES = [
-  "5 saved trips",
-  "AI itinerary generation",
+  "AI itinerary generation (Gemini)",
+  "Save up to 5 trips",
   "3 day regenerations per trip",
-  "PDF export",
-  "Shareable trip links",
-  "Google Maps integration",
+  "PDF itinerary export",
+  "Shareable trip links + WhatsApp",
+  "Google Maps links on activities",
+  "Live weather & currency",
+  "Real destination photos",
 ];
 
-/** Pro tier extras (shown as "Everything in free PLUS") */
+/** Pro tier extras (shown as "Everything in Free PLUS") */
 const PRO_FEATURES = [
   "Unlimited saved trips",
-  "Unlimited regenerations",
-  "AI chat editor",
-  "Budget analytics",
-  "Priority AI generation",
+  "Unlimited day regenerations",
+  "AI chat editor (edit days by chat)",
+  "Expense tracker + budget analytics",
   "Custom activity builder",
-  "Offline travel pack",
+  "Google Calendar export (.ics)",
+  "Offline travel pack (PDF + QR + maps)",
 ];
 
 /** FAQ accordion content */
@@ -233,7 +235,7 @@ export default function PricingPage() {
               <span className="text-[40px] font-bold leading-none text-[#0F172A]">
                 ₹0
               </span>
-              <span className="text-sm text-[#64748B]">/month</span>
+              <span className="text-sm text-[#64748B]">forever</span>
             </div>
 
             <ul className="mt-8 flex-1 space-y-3.5">

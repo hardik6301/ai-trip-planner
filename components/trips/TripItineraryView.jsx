@@ -26,6 +26,7 @@ import {
   Info,
   MapPin,
   Moon,
+  Plus,
   RefreshCw,
   Settings,
   Share2,
@@ -50,7 +51,10 @@ import {
   shareTripNative,
 } from "@/utils/shareTrip";
 import { downloadTripPdf } from "@/utils/downloadTripPdf";
+import { downloadTripIcs } from "@/utils/downloadTripIcs";
+import { downloadOfflinePack } from "@/utils/downloadOfflinePack";
 import { getGoogleMapsLink } from "@/utils/googleMaps";
+import Modal from "@/components/ui/Modal";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
 import { currencySymbol, parseTripVibe } from "@/lib/destinationLive";
 
@@ -320,6 +324,19 @@ export default function TripItineraryView({
   const [regenerateError, setRegenerateError] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [icsBusy, setIcsBusy] = useState(false);
+  const [offlineBusy, setOfflineBusy] = useState(false);
+  // Custom activity builder (Pro)
+  const [activityModal, setActivityModal] = useState(null); // { dayNumber }
+  const [activityForm, setActivityForm] = useState({
+    period: "morning",
+    activity: "",
+    place: "",
+    cost: "",
+    description: "",
+    duration: "2 hrs",
+  });
+  const [activitySaving, setActivitySaving] = useState(false);
   // Real destination photo for the hero (not the hardcoded mountain stock image)
   const [heroImage, setHeroImage] = useState(DEFAULT_HERO);
 
@@ -477,6 +494,118 @@ export default function TripItineraryView({
     } finally {
       setPdfBusy(false);
     }
+  }
+
+  /** Pro — export activities to Google Calendar (.ics) */
+  function handleCalendarExport() {
+    if (!isPro) {
+      showToast("Calendar export is a Pro feature", "error");
+      return;
+    }
+    if (icsBusy || !tripData?.days?.length) return;
+    setIcsBusy(true);
+    try {
+      downloadTripIcs(tripData);
+      showToast("Calendar file downloaded — open it in Google Calendar", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Calendar export failed", "error");
+    } finally {
+      setIcsBusy(false);
+    }
+  }
+
+  /** Pro — offline PDF with QR + map links */
+  async function handleOfflinePack() {
+    if (!isPro) {
+      showToast("Offline travel pack is a Pro feature", "error");
+      return;
+    }
+    if (offlineBusy || !tripData?.days?.length) return;
+    setOfflineBusy(true);
+    try {
+      await downloadOfflinePack(tripData, { tripId: activeShareId });
+      showToast("Offline travel pack downloaded!", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Could not build offline pack",
+        "error"
+      );
+    } finally {
+      setOfflineBusy(false);
+    }
+  }
+
+  function openActivityBuilder(dayNumber) {
+    if (!isPro) {
+      showToast("Custom activity builder is a Pro feature", "error");
+      return;
+    }
+    const day = tripData.days?.find((d) => d.day === dayNumber);
+    const emptyPeriod =
+      PERIODS.find((p) => !day?.[p.key]?.activity)?.key || "morning";
+    setActivityForm({
+      period: emptyPeriod,
+      activity: "",
+      place: "",
+      cost: "",
+      description: "",
+      duration: "2 hrs",
+    });
+    setActivityModal({ dayNumber });
+  }
+
+  /** Save custom activity into the chosen day slot (Pro) */
+  async function handleSaveCustomActivity(e) {
+    e.preventDefault();
+    if (!activityModal || activitySaving) return;
+
+    const name = activityForm.activity.trim();
+    if (!name) {
+      showToast("Enter an activity name", "error");
+      return;
+    }
+
+    setActivitySaving(true);
+    const { dayNumber } = activityModal;
+    const periodKey = activityForm.period;
+
+    const nextDays = (tripData.days || []).map((d) => {
+      if (d.day !== dayNumber) return d;
+      return {
+        ...d,
+        [periodKey]: {
+          activity: name,
+          place: activityForm.place.trim() || destination,
+          cost: activityForm.cost.trim() || "—",
+          description:
+            activityForm.description.trim() ||
+            `Custom activity added for ${destination}.`,
+          duration: activityForm.duration.trim() || "2 hrs",
+          category: "Custom",
+        },
+      };
+    });
+
+    const next = { ...tripData, days: nextDays };
+    onTripDataChange?.(next);
+
+    // Persist when this is a saved trip
+    if (tripId) {
+      try {
+        await fetch("/api/update-trip", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: tripId, itinerary: next }),
+        });
+      } catch {
+        /* local state already updated */
+      }
+    }
+
+    setActivitySaving(false);
+    setActivityModal(null);
+    setExpandedDays((prev) => new Set(prev).add(dayNumber));
+    showToast(`Added to Day ${dayNumber}`, "success");
   }
 
   async function handleRegenerateDay(dayNumber) {
@@ -680,6 +809,28 @@ export default function TripItineraryView({
                 <FileText className={`h-3.5 w-3.5 ${pdfBusy ? "animate-pulse" : ""}`} />
                 {pdfBusy ? "Generating…" : "Download PDF"}
               </button>
+              {isPro && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCalendarExport}
+                    disabled={icsBusy || !tripData?.days?.length}
+                    className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-2 py-2 text-[11px] font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:opacity-45"
+                  >
+                    <Calendar className={`h-3.5 w-3.5 ${icsBusy ? "animate-pulse" : ""}`} />
+                    {icsBusy ? "…" : "Calendar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOfflinePack}
+                    disabled={offlineBusy || !tripData?.days?.length}
+                    className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-2 py-2 text-[11px] font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:opacity-45"
+                  >
+                    <FileText className={`h-3.5 w-3.5 ${offlineBusy ? "animate-pulse" : ""}`} />
+                    {offlineBusy ? "…" : "Offline Pack"}
+                  </button>
+                </div>
+              )}
               {expensesHref && (
                 <Link
                   href={expensesHref}
@@ -1112,6 +1263,16 @@ export default function TripItineraryView({
                   <div className="flex gap-5">
                     <div className="w-11 shrink-0" aria-hidden="true" />
                     <div className="flex flex-1 flex-col items-center gap-2 pb-2">
+                      {isPro && (
+                        <button
+                          type="button"
+                          onClick={() => openActivityBuilder(day.day)}
+                          className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#F97316]/40 bg-[#FFF7ED] px-6 py-2 text-sm font-medium text-[#F97316] transition-colors hover:bg-[#F97316] hover:text-white"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add custom activity
+                        </button>
+                      )}
                       {canRegenerate && (
                         <button
                           type="button"
@@ -1155,6 +1316,112 @@ export default function TripItineraryView({
           </div>
         </div>
       </div>
+
+      {/* Custom activity builder modal (Pro) */}
+      <Modal
+        isOpen={Boolean(activityModal)}
+        onClose={() => !activitySaving && setActivityModal(null)}
+        title={
+          activityModal
+            ? `Add activity — Day ${activityModal.dayNumber}`
+            : "Add activity"
+        }
+      >
+        <form onSubmit={handleSaveCustomActivity} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-[#64748B]">Time of day</label>
+            <select
+              value={activityForm.period}
+              onChange={(e) =>
+                setActivityForm((f) => ({ ...f, period: e.target.value }))
+              }
+              className="mt-1 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm outline-none focus:border-[#F97316]"
+            >
+              {PERIODS.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-[#64748B]">Activity</label>
+            <input
+              required
+              value={activityForm.activity}
+              onChange={(e) =>
+                setActivityForm((f) => ({ ...f, activity: e.target.value }))
+              }
+              placeholder="e.g. Sunset boat ride"
+              className="mt-1 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm outline-none focus:border-[#F97316]"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-[#64748B]">Place</label>
+            <input
+              value={activityForm.place}
+              onChange={(e) =>
+                setActivityForm((f) => ({ ...f, place: e.target.value }))
+              }
+              placeholder="e.g. Chao Phraya River"
+              className="mt-1 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm outline-none focus:border-[#F97316]"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-[#64748B]">Cost</label>
+              <input
+                value={activityForm.cost}
+                onChange={(e) =>
+                  setActivityForm((f) => ({ ...f, cost: e.target.value }))
+                }
+                placeholder="฿500"
+                className="mt-1 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm outline-none focus:border-[#F97316]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[#64748B]">Duration</label>
+              <input
+                value={activityForm.duration}
+                onChange={(e) =>
+                  setActivityForm((f) => ({ ...f, duration: e.target.value }))
+                }
+                placeholder="2 hrs"
+                className="mt-1 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm outline-none focus:border-[#F97316]"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-[#64748B]">Notes</label>
+            <textarea
+              value={activityForm.description}
+              onChange={(e) =>
+                setActivityForm((f) => ({ ...f, description: e.target.value }))
+              }
+              rows={2}
+              placeholder="Optional details…"
+              className="mt-1 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm outline-none focus:border-[#F97316]"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setActivityModal(null)}
+              disabled={activitySaving}
+              className="cursor-pointer rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-semibold text-[#64748B]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={activitySaving}
+              className="cursor-pointer rounded-xl bg-[#F97316] px-4 py-2 text-sm font-semibold text-white hover:bg-[#ea580c] disabled:opacity-60"
+            >
+              {activitySaving ? "Saving…" : "Save activity"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
