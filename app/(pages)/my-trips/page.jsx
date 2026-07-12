@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, Sparkles } from "lucide-react";
+import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
 import {
   capitalizeDestination,
@@ -67,6 +68,10 @@ export default function MyTripsPage() {
   const [error, setError] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [deletingId, setDeletingId] = useState(null);
+  const [renamingTrip, setRenamingTrip] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameError, setRenameError] = useState("");
   const [isPro, setIsPro] = useState(false);
 
   /** Load trips for the authenticated user */
@@ -123,6 +128,70 @@ export default function MyTripsPage() {
   }, [trips, activeFilter]);
 
   const showLimitBanner = !isPro && trips.length >= FREE_TRIP_LIMIT;
+
+  /** Open the rename modal for a trip card */
+  function openRename(trip) {
+    setRenamingTrip(trip);
+    setRenameValue(trip.destination || "");
+    setRenameError("");
+  }
+
+  /** Close rename modal and reset form state */
+  function closeRename() {
+    if (renameSaving) return;
+    setRenamingTrip(null);
+    setRenameValue("");
+    setRenameError("");
+  }
+
+  /** Save a new display name via PATCH /api/update-trip */
+  async function handleRenameSubmit(e) {
+    e.preventDefault();
+    if (!renamingTrip) return;
+
+    const nextName = renameValue.trim();
+    if (!nextName) {
+      setRenameError("Enter a trip name.");
+      return;
+    }
+    if (nextName === renamingTrip.destination) {
+      closeRename();
+      return;
+    }
+
+    setRenameSaving(true);
+    setRenameError("");
+
+    try {
+      const response = await fetch("/api/update-trip", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: renamingTrip.id, destination: nextName }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Rename failed");
+      }
+
+      setTrips((prev) =>
+        prev.map((t) =>
+          t.id === renamingTrip.id
+            ? {
+                ...t,
+                destination: data.trip?.destination ?? nextName,
+                itinerary: data.trip?.itinerary ?? t.itinerary,
+              }
+            : t
+        )
+      );
+      closeRename();
+    } catch (err) {
+      setRenameError(err.message || "Could not rename trip. Try again.");
+    } finally {
+      setRenameSaving(false);
+    }
+  }
 
   /** Delete trip via API and remove from local state */
   async function handleDelete(tripId, destination) {
@@ -271,17 +340,61 @@ export default function MyTripsPage() {
                 trip={trip}
                 deleting={deletingId === trip.id}
                 onDelete={handleDelete}
+                onRename={openRename}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Rename trip modal */}
+      <Modal
+        isOpen={Boolean(renamingTrip)}
+        onClose={closeRename}
+        title="Rename trip"
+      >
+        <form onSubmit={handleRenameSubmit}>
+          <label htmlFor="rename-trip" className="text-sm font-medium text-[#64748B]">
+            Trip name
+          </label>
+          <input
+            id="rename-trip"
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            maxLength={120}
+            autoFocus
+            placeholder="e.g. Summer in Manali"
+            className="mt-2 w-full rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm text-[#0F172A] outline-none focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+          />
+          {renameError && (
+            <p className="mt-2 text-sm text-red-600">{renameError}</p>
+          )}
+          <div className="mt-5 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={closeRename}
+              disabled={renameSaving}
+              className="cursor-pointer rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={renameSaving || !renameValue.trim()}
+              className="cursor-pointer rounded-xl bg-[#F97316] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {renameSaving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
 
 /** Single trip card with cover image, badges, and actions */
-function TripGridCard({ trip, deleting, onDelete }) {
+function TripGridCard({ trip, deleting, onDelete, onRename }) {
   const destination = capitalizeDestination(trip.destination);
   const budget = getTripBudget(trip);
   const draft = isDraftTrip(trip);
@@ -319,15 +432,16 @@ function TripGridCard({ trip, deleting, onDelete }) {
           </span>
         )}
 
-        {/* Edit + delete icon buttons — top right */}
+        {/* Rename + delete icon buttons — top right */}
         <div className="absolute top-3 right-3 flex gap-2">
-          <Link
-            href={`/trip/${trip.id}`}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white"
-            aria-label={`Edit ${destination}`}
+          <button
+            type="button"
+            onClick={() => onRename(trip)}
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white"
+            aria-label={`Rename ${destination}`}
           >
             ✏️
-          </Link>
+          </button>
           <button
             type="button"
             onClick={() => onDelete(trip.id, destination)}
