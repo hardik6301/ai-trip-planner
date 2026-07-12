@@ -49,6 +49,7 @@ import {
   shareTripNative,
 } from "@/utils/shareTrip";
 import { downloadTripPdf } from "@/utils/downloadTripPdf";
+import ActivityMapEmbed from "@/components/trips/ActivityMapEmbed";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
 import { currencySymbol, parseTripVibe } from "@/lib/destinationLive";
 
@@ -1058,6 +1059,10 @@ export default function TripItineraryView({
                                 {label}
                               </span>
                             </div>
+                            <ActivityMapEmbed
+                              place={slot.place}
+                              destination={tripData.destination}
+                            />
                           </div>
                         </div>
                       </div>
