@@ -67,9 +67,10 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 NEXT_PUBLIC_GEOAPIFY_KEY=
 NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY=   # optional
+NEXT_PUBLIC_SITE_URL=https://travora-ai-app.vercel.app
 ```
 
-Run Supabase SQL migrations in `supabase/migrations/` (including `012_expenses.sql`).
+`NEXT_PUBLIC_SITE_URL` is required so WhatsApp / share links use your live domain (not localhost).
 
 ```bash
 npm run dev

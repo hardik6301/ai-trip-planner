@@ -45,31 +45,36 @@ export function normalizeShareOrigin(origin) {
   }
 }
 
-/** Site origin — use env in production so shared links aren't localhost */
+/** Site origin for public share links (WhatsApp, native share, offline pack).
+ * Always prefer NEXT_PUBLIC_SITE_URL when set so shared links aren't localhost
+ * even while testing locally.
+ */
 export function getSiteOrigin() {
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  if (envUrl) {
+    return normalizeShareOrigin(envUrl);
+  }
+
   if (typeof window !== "undefined") {
-    const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    if (envUrl && !isLocalHost(window.location.hostname)) {
-      return normalizeShareOrigin(envUrl.replace(/\/$/, ""));
-    }
     return normalizeShareOrigin(window.location.origin);
   }
-  return normalizeShareOrigin(
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || ""
-  );
+
+  return "";
 }
 
 /** Absolute URL for a saved trip's public view */
 export function getTripShareUrl(tripId) {
   const id = sanitizeTripId(tripId);
   if (!id) return "";
+
   const origin =
-    typeof window !== "undefined"
-      ? getSiteOrigin() || normalizeShareOrigin(window.location.origin)
-      : normalizeShareOrigin(
-          process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || ""
-        );
-  if (!origin) return `http://localhost:3000/trip/${id}`;
+    getSiteOrigin() ||
+    (typeof window !== "undefined"
+      ? normalizeShareOrigin(window.location.origin)
+      : "");
+
+  // Last resort — still better than a broken empty string
+  if (!origin) return `https://travora-ai-app.vercel.app/trip/${id}`;
   return `${origin}/trip/${id}`;
 }
 
