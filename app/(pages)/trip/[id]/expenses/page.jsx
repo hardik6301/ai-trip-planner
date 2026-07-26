@@ -437,25 +437,25 @@ export default function ExpenseTrackerPage() {
   const destination = capitalizeDestination(trip.destination);
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] pb-16 font-sans">
-      <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <nav className="flex items-center gap-1 text-[11px] font-semibold tracking-wide text-[#8B95AB] uppercase">
+    <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-12 font-sans sm:pb-16">
+      <div className="mx-auto max-w-[1200px] px-4 pt-5 sm:pt-8 md:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <nav className="flex flex-wrap items-center gap-1 text-[10px] font-semibold tracking-wide text-[#8B95AB] uppercase sm:text-[11px]">
               <Link href="/my-trips" className="transition-colors hover:text-white">
                 My Trips
               </Link>
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3 w-3 shrink-0" />
               <Link
                 href={`/trip/${tripId}`}
-                className="max-w-[160px] truncate transition-colors hover:text-white"
+                className="max-w-[120px] truncate transition-colors hover:text-white sm:max-w-[160px]"
               >
                 {destination}
               </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-[#F97316]">Expense Tracker</span>
+              <ChevronRight className="h-3 w-3 shrink-0" />
+              <span className="text-[#F97316]">Expenses</span>
             </nav>
-            <h1 className="mt-2 flex items-center gap-3 text-3xl font-bold tracking-tight text-white">
+            <h1 className="mt-2 flex flex-wrap items-center gap-2 text-2xl font-bold tracking-tight text-white sm:gap-3 sm:text-3xl">
               Expense Tracker
               <ProBadge />
             </h1>
@@ -465,35 +465,36 @@ export default function ExpenseTrackerPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-3">
             <button
               type="button"
               onClick={handleExportPdf}
               disabled={expenses.length === 0}
-              className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#26314B] bg-transparent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#141D31] disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#26314B] bg-transparent px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#141D31] disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
             >
               <Download className="h-4 w-4" />
-              Export PDF
+              <span className="truncate">Export PDF</span>
             </button>
             <a
               href="#add-expense"
-              className="flex items-center gap-2 rounded-xl bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(249,115,22,0.35)] transition-colors hover:bg-[#ea580c]"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#F97316] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(249,115,22,0.35)] transition-colors hover:bg-[#ea580c] sm:px-4"
             >
               <Plus className="h-4 w-4" />
-              Add Expense
+              <span className="truncate">Add Expense</span>
             </a>
           </div>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-1">
-            <div className="rounded-2xl border border-[#26314B] bg-[#111A2E] p-5">
+        <div className="mt-6 grid gap-5 sm:mt-8 sm:gap-6 lg:grid-cols-3">
+          {/* Form first on mobile so logging is one tap from header CTA */}
+          <div className="order-2 space-y-5 sm:space-y-6 lg:order-1 lg:col-span-1 lg:space-y-6">
+            <div className="rounded-2xl border border-[#26314B] bg-[#111A2E] p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-bold tracking-[0.12em] text-[#F97316] uppercase">
                     Total Spent
                   </p>
-                  <p className="mt-1 text-3xl font-bold tracking-tight text-white">
+                  <p className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
                     {money(totalSpent)}
                   </p>
                 </div>
@@ -501,7 +502,7 @@ export default function ExpenseTrackerPage() {
                   <p className="text-[10px] font-bold tracking-[0.12em] text-[#F97316] uppercase">
                     Est. Budget
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-white">
+                  <p className="mt-1 truncate text-sm font-semibold text-white">
                     {budgetRange.label}
                   </p>
                 </div>
@@ -525,12 +526,12 @@ export default function ExpenseTrackerPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#26314B] bg-[#111A2E] p-5">
+            <div className="rounded-2xl border border-[#26314B] bg-[#111A2E] p-4 sm:p-5">
               <h3 className="text-lg font-bold text-white">Breakdown</h3>
 
-              <div className="mt-5 flex justify-center">
+              <div className="mt-4 flex justify-center sm:mt-5">
                 <div
-                  className="relative h-44 w-44 rounded-full"
+                  className="relative h-36 w-36 rounded-full sm:h-44 sm:w-44"
                   style={{ background: donutGradient }}
                   role="img"
                   aria-label="Spending breakdown by category"
@@ -568,12 +569,12 @@ export default function ExpenseTrackerPage() {
               )}
             </div>
 
-            <div className="rounded-2xl bg-[#F97316] p-5">
+            <div className="rounded-2xl bg-[#F97316] p-4 sm:p-5">
               <div className="flex items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
                   <Sparkles className="h-4 w-4 text-white" />
                 </span>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-bold text-white">Travora AI Insight</h3>
                   <p className="mt-1.5 text-[13px] leading-relaxed text-[#431407]">
                     {insightLoading
@@ -586,13 +587,15 @@ export default function ExpenseTrackerPage() {
             </div>
           </div>
 
-          <div className="space-y-6 lg:col-span-2">
+          <div className="order-1 space-y-5 sm:space-y-6 lg:order-2 lg:col-span-2">
             <form
               id="add-expense"
               onSubmit={handleAddExpense}
-              className="scroll-mt-24 rounded-2xl border border-[#26314B] bg-[#111A2E] p-5 md:p-6"
+              className="scroll-mt-24 rounded-2xl border border-[#26314B] bg-[#111A2E] p-4 sm:p-5 md:p-6"
             >
-              <h2 className="text-xl font-bold text-white">Add New Expense</h2>
+              <h2 className="text-lg font-bold text-white sm:text-xl">
+                Add New Expense
+              </h2>
               <p className="mt-1 text-xs text-[#8B95AB]">
                 Attach spend to a trip day, or drill into a specific activity.
               </p>
@@ -606,7 +609,7 @@ export default function ExpenseTrackerPage() {
                     id="exp-day"
                     value={dayNumber}
                     onChange={(e) => setDayNumber(e.target.value)}
-                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white outline-none focus:border-[#F97316]"
+                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-3 text-base text-white outline-none focus:border-[#F97316] sm:py-2.5 sm:text-sm"
                   >
                     <option value="">No specific day</option>
                     {itineraryDays.map((d) => (
@@ -630,7 +633,7 @@ export default function ExpenseTrackerPage() {
                     value={activityKey}
                     onChange={(e) => setActivityKey(e.target.value)}
                     disabled={!dayNumber}
-                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white outline-none focus:border-[#F97316] disabled:cursor-not-allowed disabled:opacity-45"
+                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-3 text-base text-white outline-none focus:border-[#F97316] disabled:cursor-not-allowed disabled:opacity-45 sm:py-2.5 sm:text-sm"
                   >
                     {activityOptions.map((o) => (
                       <option key={o.value || "whole"} value={o.value}>
@@ -653,7 +656,7 @@ export default function ExpenseTrackerPage() {
                     id="exp-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white outline-none focus:border-[#F97316]"
+                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-3 text-base text-white outline-none focus:border-[#F97316] sm:py-2.5 sm:text-sm"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c.value} value={c.value}>
@@ -680,7 +683,7 @@ export default function ExpenseTrackerPage() {
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
                     required
-                    className="mt-1.5 w-full rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white placeholder-[#4B5570] outline-none focus:border-[#F97316]"
+                    className="mt-1.5 w-full rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-3 text-base text-white placeholder-[#4B5570] outline-none focus:border-[#F97316] sm:py-2.5 sm:text-sm"
                   />
                 </div>
 
@@ -695,12 +698,12 @@ export default function ExpenseTrackerPage() {
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="What was this for?"
                     maxLength={120}
-                    className="mt-1.5 w-full rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white placeholder-[#4B5570] outline-none focus:border-[#F97316]"
+                    className="mt-1.5 w-full rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-3 text-base text-white placeholder-[#4B5570] outline-none focus:border-[#F97316] sm:py-2.5 sm:text-sm"
                   />
                 </div>
               </div>
 
-              <div className="mt-4 max-w-xs">
+              <div className="mt-4 w-full max-w-xs">
                 <label htmlFor="exp-date" className="text-xs font-semibold text-[#8B95AB]">
                   Date paid
                 </label>
@@ -709,7 +712,7 @@ export default function ExpenseTrackerPage() {
                   type="date"
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
-                  className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white outline-none [color-scheme:dark] focus:border-[#F97316]"
+                  className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-3 text-base text-white outline-none [color-scheme:dark] focus:border-[#F97316] sm:py-2.5 sm:text-sm"
                 />
               </div>
 
@@ -718,7 +721,7 @@ export default function ExpenseTrackerPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#FDBA74] py-3 text-sm font-bold text-[#431407] transition-colors hover:bg-[#F97316] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-5 flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#FDBA74] py-3 text-sm font-bold text-[#431407] transition-colors hover:bg-[#F97316] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 {saving ? "Saving..." : "Save Expense"}
@@ -736,13 +739,15 @@ export default function ExpenseTrackerPage() {
             ) : (
               dayGroups.map((group) => (
                 <section key={group.key}>
-                  <div className="flex items-center gap-3 px-1">
-                    <h3 className="text-lg font-bold text-white">{group.label}</h3>
-                    <span className="truncate text-xs text-[#8B95AB]">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
+                    <h3 className="text-base font-bold text-white sm:text-lg">
+                      {group.label}
+                    </h3>
+                    <span className="min-w-0 truncate text-xs text-[#8B95AB]">
                       {group.dateLabel}
                     </span>
-                    <div className="h-px flex-1 bg-[#26314B]" />
-                    <span className="text-sm font-bold text-[#F97316]">
+                    <div className="hidden h-px min-w-[2rem] flex-1 bg-[#26314B] sm:block" />
+                    <span className="ml-auto text-sm font-bold text-[#F97316] sm:ml-0">
                       {money(group.total)}
                     </span>
                   </div>
@@ -766,10 +771,10 @@ export default function ExpenseTrackerPage() {
                       return (
                         <div
                           key={exp.id}
-                          className="group flex items-center gap-4 rounded-2xl border border-[#26314B] bg-[#111A2E] px-4 py-3.5 transition-colors hover:border-[#3A4763]"
+                          className="group flex items-start gap-3 rounded-2xl border border-[#26314B] bg-[#111A2E] px-3 py-3 transition-colors hover:border-[#3A4763] sm:items-center sm:gap-4 sm:px-4 sm:py-3.5"
                         >
                           <span
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11"
                             style={{
                               backgroundColor: `${meta.color}22`,
                               color: meta.color,
@@ -780,15 +785,20 @@ export default function ExpenseTrackerPage() {
                           </span>
 
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-white">
-                              {exp.note || exp.activity_label || exp.category}
-                            </p>
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="truncate text-sm font-bold text-white">
+                                {exp.note || exp.activity_label || exp.category}
+                              </p>
+                              <p className="shrink-0 text-sm font-bold text-white sm:hidden">
+                                {money(exp.amount)}
+                              </p>
+                            </div>
                             <p className="mt-0.5 truncate text-xs text-[#8B95AB]">
                               {subtitle}
                             </p>
                           </div>
 
-                          <p className="shrink-0 text-base font-bold text-white">
+                          <p className="hidden shrink-0 text-base font-bold text-white sm:block">
                             {money(exp.amount)}
                           </p>
 

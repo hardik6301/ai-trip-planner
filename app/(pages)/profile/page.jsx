@@ -63,17 +63,19 @@ function formatProDate(iso) {
 
 function StatCard({ icon: Icon, label, value, accent }) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-[0_2px_12px_rgba(15,23,42,0.04)]">
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-[0_2px_12px_rgba(15,23,42,0.04)] sm:gap-4 sm:p-4">
       <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${accent}`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${accent}`}
       >
-        <Icon className="h-5 w-5" />
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
-      <div>
-        <p className="text-[10px] font-bold tracking-wider text-[#94A3B8] uppercase">
+      <div className="min-w-0">
+        <p className="text-[9px] font-bold tracking-wider text-[#94A3B8] uppercase sm:text-[10px]">
           {label}
         </p>
-        <p className="text-xl font-bold text-[#0F172A]">{value}</p>
+        <p className="truncate text-lg font-bold text-[#0F172A] sm:text-xl">
+          {value}
+        </p>
       </div>
     </div>
   );
@@ -348,19 +350,19 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-[#F8FAFC]">
+      <div className="flex min-h-[calc(100dvh-64px)] items-center justify-center bg-[#F8FAFC] sm:min-h-[calc(100dvh-72px)]">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#E2E8F0] border-t-[#F97316]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-[#F8FAFC] pb-16 pt-8">
-      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-8 px-6 lg:grid-cols-12">
-        <aside className="space-y-5 lg:col-span-4">
-          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
-            <div className="relative mx-auto mb-4 h-24 w-24">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-[#F472B6] text-3xl font-bold text-white">
+    <div className="min-h-[calc(100dvh-64px)] overflow-x-hidden bg-[#F8FAFC] pb-12 pt-6 sm:min-h-[calc(100dvh-72px)] sm:pb-16 sm:pt-8">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-5 px-4 sm:gap-6 sm:px-6 lg:grid-cols-12 lg:gap-8">
+        <aside className="space-y-4 sm:space-y-5 lg:col-span-4">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 text-center shadow-[0_4px_24px_rgba(15,23,42,0.06)] sm:p-6">
+            <div className="relative mx-auto mb-4 h-20 w-20 sm:h-24 sm:w-24">
+              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#F472B6] text-2xl font-bold text-white sm:text-3xl">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -378,56 +380,62 @@ export default function ProfilePage() {
               )}
             </div>
 
-            <h1 className="text-lg font-bold text-[#0F172A]">{displayName}</h1>
+            <h1 className="truncate text-lg font-bold text-[#0F172A]">
+              {displayName}
+            </h1>
             <p className="mt-1 truncate text-sm text-[#64748B]">{email}</p>
 
             <button
               type="button"
               onClick={openEditProfile}
-              className="mt-5 w-full cursor-pointer rounded-xl bg-[#EFF6FF] py-2.5 text-sm font-semibold text-[#1E3A8A] transition-colors hover:bg-[#DBEAFE]"
+              className="mt-4 min-h-11 w-full cursor-pointer rounded-xl bg-[#EFF6FF] py-2.5 text-sm font-semibold text-[#1E3A8A] transition-colors hover:bg-[#DBEAFE] sm:mt-5"
             >
               Edit Profile
             </button>
           </div>
 
-          <StatCard
-            icon={Plane}
-            label="Total Trips"
-            value={stats.totalTrips}
-            accent="bg-[#FFF7ED] text-[#F97316]"
-          />
-          <StatCard
-            icon={Globe}
-            label="Countries Planned"
-            value={stats.countriesPlanned}
-            accent="bg-[#EFF6FF] text-[#1E3A8A]"
-          />
-          <StatCard
-            icon={Calendar}
-            label="Days Planned"
-            value={stats.daysPlanned}
-            accent="bg-[#F5F3FF] text-[#7C3AED]"
-          />
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3 lg:grid-cols-1 lg:gap-5">
+            <StatCard
+              icon={Plane}
+              label="Total Trips"
+              value={stats.totalTrips}
+              accent="bg-[#FFF7ED] text-[#F97316]"
+            />
+            <StatCard
+              icon={Globe}
+              label="Countries Planned"
+              value={stats.countriesPlanned}
+              accent="bg-[#EFF6FF] text-[#1E3A8A]"
+            />
+            <StatCard
+              icon={Calendar}
+              label="Days Planned"
+              value={stats.daysPlanned}
+              accent="bg-[#F5F3FF] text-[#7C3AED]"
+            />
+          </div>
         </aside>
 
-        <div className="space-y-6 lg:col-span-8">
-          <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] p-8 text-white shadow-[0_8px_32px_rgba(30,58,138,0.25)]">
-            <h2 className="text-2xl font-bold tracking-tight md:text-[28px]">
+        <div className="space-y-4 sm:space-y-6 lg:col-span-8">
+          <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] p-5 text-white shadow-[0_8px_32px_rgba(30,58,138,0.25)] sm:p-8">
+            <h2 className="text-xl font-bold tracking-tight sm:text-2xl md:text-[28px]">
               Your Travel Stats
             </h2>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/90 md:text-base">
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/90 sm:mt-3 md:text-base">
               {stats.totalTrips > 0
                 ? `You've saved ${stats.totalTrips} trip${stats.totalTrips !== 1 ? "s" : ""} and planned ${stats.daysPlanned} days across ${stats.countriesPlanned} ${stats.countriesPlanned === 1 ? "country" : "countries"} with Travora AI.`
                 : "Start planning your first trip — Travora AI will craft a full itinerary in under 2 minutes."}
             </p>
-            <div className="mt-8 grid grid-cols-1 gap-4 border-t border-white/20 pt-6 sm:grid-cols-2">
-              <div>
+            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-white/20 pt-5 sm:mt-8 sm:pt-6">
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold tracking-wider text-white/70 uppercase">
                   Top Region
                 </p>
-                <p className="mt-1 text-sm font-semibold">{stats.topRegion}</p>
+                <p className="mt-1 truncate text-sm font-semibold">
+                  {stats.topRegion}
+                </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold tracking-wider text-white/70 uppercase">
                   AI Itineraries
                 </p>
@@ -438,9 +446,9 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <section className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-[0_4px_24px_rgba(15,23,42,0.04)]">
-              <div className="mb-5 flex items-center gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
+            <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_4px_24px_rgba(15,23,42,0.04)] sm:p-6">
+              <div className="mb-4 flex items-center gap-2 sm:mb-5">
                 <Settings className="h-5 w-5 text-[#1E3A8A]" />
                 <h3 className="text-base font-bold text-[#0F172A]">Preferences</h3>
               </div>
@@ -506,7 +514,7 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[#FECACA] bg-white p-6 shadow-[0_4px_24px_rgba(15,23,42,0.04)]">
+            <section className="rounded-2xl border border-[#FECACA] bg-white p-5 shadow-[0_4px_24px_rgba(15,23,42,0.04)] sm:p-6">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-red-500" />
                 <h3 className="text-base font-bold text-red-600">Danger Zone</h3>
@@ -521,17 +529,17 @@ export default function ProfilePage() {
                   setDeleteConfirm("");
                   setDeleteOpen(true);
                 }}
-                className="w-full cursor-pointer rounded-xl border border-red-200 bg-red-50 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
+                className="min-h-11 w-full cursor-pointer rounded-xl border border-red-200 bg-red-50 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
               >
                 Delete Account
               </button>
             </section>
           </div>
 
-          <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#F97316] to-[#FB923C] p-8 text-white shadow-[0_8px_32px_rgba(249,115,22,0.3)]">
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold tracking-tight">
+          <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#F97316] to-[#FB923C] p-5 text-white shadow-[0_8px_32px_rgba(249,115,22,0.3)] sm:p-8">
+            <div className="flex flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
                   {isPro ? "You're on Travora Pro" : "Maximize Your Journeys"}
                 </h2>
 
@@ -569,14 +577,14 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setCancelProOpen(true)}
-                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl border-2 border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="inline-flex min-h-12 w-full shrink-0 cursor-pointer items-center justify-center rounded-xl border-2 border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20 md:w-auto"
                 >
                   Cancel Pro
                 </button>
               ) : (
                 <Link
                   href="/pricing"
-                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#F97316] shadow-md transition-colors hover:bg-[#FFF7ED]"
+                  className="inline-flex min-h-12 w-full shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#F97316] shadow-md transition-colors hover:bg-[#FFF7ED] md:w-auto"
                 >
                   Upgrade to Pro
                 </Link>
@@ -585,8 +593,8 @@ export default function ProfilePage() {
           </section>
 
           {!isPro && (
-            <p className="flex items-center justify-center gap-2 text-center text-sm text-[#64748B]">
-              <Sparkles className="h-4 w-4 text-[#F97316]" />
+            <p className="flex items-start justify-center gap-2 px-2 text-center text-xs text-[#64748B] sm:items-center sm:text-sm">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#F97316] sm:mt-0" />
               Pro unlocks unlimited trips, AI chat editor, expenses, and offline packs.
             </p>
           )}
@@ -595,8 +603,8 @@ export default function ProfilePage() {
 
       {/* Edit profile modal */}
       {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-[#E2E8F0] bg-white p-5 shadow-2xl sm:rounded-2xl sm:p-6">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#0F172A]">Edit Profile</h3>
               <button
@@ -649,7 +657,7 @@ export default function ProfilePage() {
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               maxLength={80}
-              className="mb-4 w-full rounded-xl border border-[#E2E8F0] px-4 py-2.5 text-[#0F172A] outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
+              className="mb-4 w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-base text-[#0F172A] outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20 sm:py-2.5 sm:text-sm"
             />
 
             <label className="mb-1 block text-sm font-medium text-[#64748B]">
@@ -659,15 +667,15 @@ export default function ProfilePage() {
               type="email"
               value={email}
               disabled
-              className="mb-5 w-full cursor-not-allowed rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-[#94A3B8]"
+              className="mb-5 w-full cursor-not-allowed rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-base text-[#94A3B8] sm:py-2.5 sm:text-sm"
             />
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
               <button
                 type="button"
                 onClick={closeEditProfile}
                 disabled={savingProfile}
-                className="flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
+                className="min-h-11 flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -675,7 +683,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={handleSaveProfile}
                 disabled={savingProfile || !editName.trim()}
-                className="flex-1 cursor-pointer rounded-xl bg-[#1E3A8A] py-2.5 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+                className="min-h-11 flex-1 cursor-pointer rounded-xl bg-[#1E3A8A] py-2.5 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
               >
                 {savingProfile ? "Saving…" : "Save"}
               </button>
@@ -686,8 +694,8 @@ export default function ProfilePage() {
 
       {/* Delete account confirmation */}
       {deleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-red-200 bg-white p-5 shadow-2xl sm:rounded-2xl sm:p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-red-600">Delete Account</h3>
               <button
@@ -711,15 +719,15 @@ export default function ProfilePage() {
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}
               placeholder="Type DELETE"
-              className="mb-5 w-full rounded-xl border border-[#E2E8F0] px-4 py-2.5 text-[#0F172A] outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+              className="mb-5 w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-base text-[#0F172A] outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 sm:py-2.5 sm:text-sm"
             />
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
               <button
                 type="button"
                 onClick={() => setDeleteOpen(false)}
                 disabled={deletingAccount}
-                className="flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
+                className="min-h-11 flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -727,7 +735,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={deletingAccount || deleteConfirm !== "DELETE"}
-                className="flex-1 cursor-pointer rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                className="min-h-11 flex-1 cursor-pointer rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
               >
                 {deletingAccount ? "Deleting…" : "Delete forever"}
               </button>
@@ -738,8 +746,8 @@ export default function ProfilePage() {
 
       {/* Cancel Pro confirmation */}
       {cancelProOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-[#E2E8F0] bg-white p-5 shadow-2xl sm:rounded-2xl sm:p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#0F172A]">Cancel Pro?</h3>
               <button
@@ -758,12 +766,12 @@ export default function ProfilePage() {
               one-time payment — no refund is issued.
             </p>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
               <button
                 type="button"
                 onClick={() => setCancelProOpen(false)}
                 disabled={cancellingPro}
-                className="flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
+                className="min-h-11 flex-1 cursor-pointer rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] disabled:opacity-60"
               >
                 Keep Pro
               </button>
@@ -771,7 +779,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={handleCancelPro}
                 disabled={cancellingPro}
-                className="flex-1 cursor-pointer rounded-xl bg-[#1E3A8A] py-2.5 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+                className="min-h-11 flex-1 cursor-pointer rounded-xl bg-[#1E3A8A] py-2.5 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
               >
                 {cancellingPro ? "Cancelling…" : "Cancel Pro"}
               </button>
