@@ -62,7 +62,11 @@ export function getSiteOrigin() {
   return "";
 }
 
-/** Absolute URL for a saved trip's public view */
+/**
+ * Absolute URL for a saved trip's public VIEW (read-only).
+ * Edit invites use a separate revocable edit_token → /trip/join/[token]
+ * (see utils/editInvite.js).
+ */
 export function getTripShareUrl(tripId) {
   const id = sanitizeTripId(tripId);
   if (!id) return "";

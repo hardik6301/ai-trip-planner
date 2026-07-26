@@ -59,6 +59,7 @@ import Modal from "@/components/ui/Modal";
 import LiveWeatherCard from "@/components/trips/LiveWeatherCard";
 import LiveCurrencyCard from "@/components/trips/LiveCurrencyCard";
 import OpenNowBadge from "@/components/trips/OpenNowBadge";
+import EditInviteControls from "@/components/trips/EditInviteControls";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
 import { parseTripVibe } from "@/lib/destinationLive";
 import { createClient } from "@/lib/supabase/client";
@@ -364,6 +365,7 @@ export default function TripItineraryView({
   aiBadgeDays = [],
   expensesHref = null,
   onOpenAiAssistant = null,
+  showEditInvite = false,
 }) {
   const { tripMeta } = tripData;
   const destination = capitalizeDestination(tripData.destination);
@@ -892,6 +894,9 @@ export default function TripItineraryView({
                 <p className="text-center text-[10px] leading-snug text-[#94A3B8]">
                   Save trip to unlock Share link · WhatsApp works now
                 </p>
+              )}
+              {showEditInvite && tripId && (
+                <EditInviteControls tripId={tripId} />
               )}
               <button
                 type="button"

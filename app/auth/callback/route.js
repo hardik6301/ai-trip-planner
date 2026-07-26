@@ -13,8 +13,12 @@ export async function GET(request) {
   // OAuth error params (Supabase sends these when signup/login fails)
   const oauthError =
     searchParams.get("error_description") || searchParams.get("error");
-  // Default destination after a successful OAuth login
-  const next = searchParams.get("next") ?? "/my-trips";
+  // Default destination after a successful OAuth login (allow edit-invite next=)
+  const rawNext = searchParams.get("next") ?? "/my-trips";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//")
+      ? rawNext
+      : "/my-trips";
 
   // OAuth failed before a code was issued (e.g. database error saving user)
   if (oauthError && !code) {

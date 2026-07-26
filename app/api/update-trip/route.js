@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { canEditTripAccess, getTripAccess } from "@/lib/tripAccess";
 
-/** PATCH — update a saved trip (itinerary JSON and/or display name) */
+/** PATCH — update a saved trip (itinerary / name) with optimistic versioning */
 export async function PATCH(request) {
   try {
     const supabase = await createClient();
@@ -15,12 +16,23 @@ export async function PATCH(request) {
     }
 
     const body = await request.json();
-    const { id, itinerary, destination } = body;
+    const { id, itinerary, destination, expectedVersion } = body;
 
     if (!id) {
       return NextResponse.json(
         { error: "Missing required field: id" },
         { status: 400 }
+      );
+    }
+
+    const access = await getTripAccess(supabase, id, user.id);
+    if (!access) {
+      return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+    }
+    if (!canEditTripAccess(access)) {
+      return NextResponse.json(
+        { error: "You do not have permission to edit this trip" },
+        { status: 403 }
       );
     }
 
@@ -34,40 +46,52 @@ export async function PATCH(request) {
       );
     }
 
-    const updates = {};
+    const currentVersion = Number(access.trip.itinerary_version ?? 1);
 
-    // Rename — sync destination on the row and inside itinerary JSON
+    // Optimistic concurrency — refresh-based multi-editor safety
+    if (
+      expectedVersion != null &&
+      Number(expectedVersion) !== currentVersion
+    ) {
+      return NextResponse.json(
+        {
+          error: "Trip was updated by someone else. Refresh and try again.",
+          code: "VERSION_CONFLICT",
+          currentVersion,
+        },
+        { status: 409 }
+      );
+    }
+
+    const updates = {
+      itinerary_version: currentVersion + 1,
+    };
+
     if (trimmedDestination) {
       updates.destination = trimmedDestination;
 
       if (itinerary) {
         updates.itinerary = { ...itinerary, destination: trimmedDestination };
-      } else {
-        const { data: existing } = await supabase
-          .from("trips")
-          .select("itinerary")
-          .eq("id", id)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (existing?.itinerary) {
-          updates.itinerary = {
-            ...existing.itinerary,
-            destination: trimmedDestination,
-          };
-        }
+      } else if (access.trip.itinerary) {
+        updates.itinerary = {
+          ...access.trip.itinerary,
+          destination: trimmedDestination,
+        };
       }
     } else if (itinerary) {
       updates.itinerary = itinerary;
     }
 
-    const { data, error } = await supabase
-      .from("trips")
-      .update(updates)
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .select("id, destination, itinerary")
-      .single();
+    let query = supabase.from("trips").update(updates).eq("id", id);
+
+    // Prefer version match when column exists
+    if (access.trip.itinerary_version != null) {
+      query = query.eq("itinerary_version", currentVersion);
+    }
+
+    const { data, error } = await query
+      .select("id, destination, itinerary, itinerary_version, user_id")
+      .maybeSingle();
 
     if (error) {
       console.error("Error updating trip:", error);
@@ -78,10 +102,21 @@ export async function PATCH(request) {
     }
 
     if (!data) {
-      return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Trip was updated by someone else. Refresh and try again.",
+          code: "VERSION_CONFLICT",
+          currentVersion,
+        },
+        { status: 409 }
+      );
     }
 
-    return NextResponse.json({ success: true, trip: data });
+    return NextResponse.json({
+      success: true,
+      trip: data,
+      itineraryVersion: data.itinerary_version,
+    });
   } catch (error) {
     console.error("Update trip error:", error);
     return NextResponse.json(

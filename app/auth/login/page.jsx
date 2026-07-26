@@ -16,6 +16,12 @@ import { parseAuthErrorFromHash } from "@/utils/parseAuthError";
 const inputClassName =
   "w-full rounded-lg border-2 border-transparent bg-surface-container-low p-3 text-on-surface outline-none transition-all focus:border-primary focus:bg-white";
 
+function safeNextPath(raw) {
+  if (!raw || typeof raw !== "string") return "/my-trips";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/my-trips";
+  return raw;
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -26,17 +32,24 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   // Error message shown below the form on auth failure
   const [error, setError] = useState("");
+  const [nextPath, setNextPath] = useState("/my-trips");
 
   // Show errors — prefer hash (specific OAuth errors) over generic query message
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(safeNextPath(params.get("next")));
+
     const hashError = parseAuthErrorFromHash(window.location.hash);
     if (hashError) {
       setError(hashError);
-      window.history.replaceState(null, "", window.location.pathname);
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`
+      );
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
     const queryError = params.get("error");
     if (queryError) {
       setError(queryError);
@@ -49,10 +62,13 @@ export default function LoginPage() {
     setLoading(true);
 
     const supabase = createClient();
+    const callback = new URL(`${window.location.origin}/auth/callback`);
+    callback.searchParams.set("next", nextPath);
+
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callback.toString(),
       },
     });
 
@@ -62,7 +78,7 @@ export default function LoginPage() {
     }
   }
 
-  // Sign in with email and password, then redirect to saved trips
+  // Sign in with email and password, then redirect (honors ?next= for edit invites)
   async function handleEmailSignIn(e) {
     e.preventDefault();
     setError("");
@@ -80,7 +96,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/my-trips");
+    router.push(nextPath);
     router.refresh();
   }
 

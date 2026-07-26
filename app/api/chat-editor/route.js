@@ -8,11 +8,12 @@ import { parseGeminiJson } from "@/lib/parseGeminiJson";
 import { createClient } from "@/lib/supabase/server";
 // Import the Pro status helper that reads profiles.is_pro
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
+import { canEditTripAccess, getTripAccess } from "@/lib/tripAccess";
 
 /**
  * POST /api/chat-editor
  * AI Chat Editor — edits an itinerary based on a natural language request.
- * Pro-only feature; enforced server-side.
+ * Pro-only; for saved trips also requires owner or editor membership.
  */
 export async function POST(request) {
   try {
@@ -46,7 +47,24 @@ export async function POST(request) {
     // Parse the JSON body sent by the chat panel
     const body = await request.json();
     // Extract the user's message, the current itinerary, and the destination
-    const { message, currentItinerary, destination } = body;
+    const { message, currentItinerary, destination, tripId } = body;
+
+    // Saved collaborative trips — editors may use AI; viewers may not
+    if (tripId) {
+      const access = await getTripAccess(supabase, tripId, user.id);
+      if (!access) {
+        return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+      }
+      if (!canEditTripAccess(access)) {
+        return NextResponse.json(
+          {
+            error: "You need an edit invite to change this trip with AI.",
+            code: "EDIT_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     // Validate that all required fields are present
     if (!message?.trim() || !currentItinerary?.days?.length || !destination) {

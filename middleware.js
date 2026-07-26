@@ -41,6 +41,17 @@ export async function middleware(request) {
     return NextResponse.redirect(url);
   }
 
+  // Edit invites require sign-in — preserve token via next=
+  if (!user && request.nextUrl.pathname.startsWith("/trip/join/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    url.searchParams.set(
+      "next",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`
+    );
+    return NextResponse.redirect(url);
+  }
+
   return supabaseResponse;
 }
 

@@ -85,6 +85,9 @@ export default function TripChatEditor({
   onTripDataChange,
   onDaysUpdated = null,
   tripId = null,
+  itineraryVersion = null,
+  onVersionUpdate = null,
+  onVersionConflict = null,
   open: openProp,
   onOpenChange = null,
 }) {
@@ -129,6 +132,7 @@ export default function TripChatEditor({
           message,
           currentItinerary: tripData,
           destination,
+          tripId,
         }),
       });
 
@@ -147,11 +151,33 @@ export default function TripChatEditor({
       }
 
       if (tripId) {
-        fetch("/api/update-trip", {
+        const saveRes = await fetch("/api/update-trip", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: tripId, itinerary: data.itinerary }),
-        }).catch(() => {});
+          body: JSON.stringify({
+            id: tripId,
+            itinerary: data.itinerary,
+            expectedVersion: itineraryVersion,
+          }),
+        });
+        const saveData = await saveRes.json().catch(() => ({}));
+
+        if (saveRes.status === 409 || saveData.code === "VERSION_CONFLICT") {
+          onVersionConflict?.(saveData);
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              role: "ai",
+              content:
+                "I prepared an edit, but the trip was updated by someone else. I refreshed the latest version — please send your request again.",
+            },
+          ]);
+          return;
+        }
+
+        if (saveRes.ok && saveData.itineraryVersion != null) {
+          onVersionUpdate?.(saveData.itineraryVersion);
+        }
       }
 
       const confirmation =

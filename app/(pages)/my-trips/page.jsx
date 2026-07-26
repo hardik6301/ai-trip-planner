@@ -93,17 +93,39 @@ export default function MyTripsPage() {
     const { isPro: proStatus } = await fetchUserProStatus(supabase, user.id);
     setIsPro(proStatus || isProUser(user));
 
-    const { data, error: fetchError } = await supabase
+    const { data: owned, error: fetchError } = await supabase
       .from("trips")
       .select("id, destination, days, budget, vibe, itinerary, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
+    // Collaborator trips (edit-token members) — additive; ignore if table missing
+    let shared = [];
+    const { data: memberships } = await supabase
+      .from("trip_members")
+      .select("trip_id, role")
+      .eq("user_id", user.id)
+      .in("role", ["editor", "owner"]);
+
+    if (memberships?.length) {
+      const ids = memberships
+        .map((m) => m.trip_id)
+        .filter((id) => !(owned || []).some((t) => t.id === id));
+      if (ids.length) {
+        const { data: memberTrips } = await supabase
+          .from("trips")
+          .select("id, destination, days, budget, vibe, itinerary, created_at")
+          .in("id", ids)
+          .order("created_at", { ascending: false });
+        shared = (memberTrips || []).map((t) => ({ ...t, _role: "editor" }));
+      }
+    }
+
     if (fetchError) {
       setError("Could not load your trips. Please try again.");
       setTrips([]);
     } else {
-      setTrips(data ?? []);
+      setTrips([...(owned ?? []), ...shared]);
     }
 
     setLoading(false);
