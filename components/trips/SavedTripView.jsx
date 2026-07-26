@@ -16,6 +16,7 @@ export default function SavedTripView({ trip, ownerId }) {
   const [tripData, setTripData] = useState(() => buildTripData(trip));
   const [isPro, setIsPro] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
 
   // Day cards highlighted after AI chat edits
   const [aiFlashDays, setAiFlashDays] = useState([]);
@@ -72,6 +73,9 @@ export default function SavedTripView({ trip, ownerId }) {
         expensesHref={isOwner && isPro ? `/trip/${trip.id}/expenses` : null}
         heroBadge={isOwner ? "AI Optimized Itinerary" : "Shared Itinerary"}
         saveButton={false}
+        onOpenAiAssistant={
+          isOwner ? () => setAiChatOpen(true) : null
+        }
         footerExtra={
           <div className="text-center">
             <a
@@ -93,6 +97,8 @@ export default function SavedTripView({ trip, ownerId }) {
           onTripDataChange={handleTripDataChange}
           onDaysUpdated={handleAiDaysUpdated}
           tripId={trip.id}
+          open={aiChatOpen}
+          onOpenChange={setAiChatOpen}
         />
       )}
     </>

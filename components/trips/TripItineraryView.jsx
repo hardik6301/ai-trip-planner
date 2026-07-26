@@ -83,10 +83,10 @@ const PACKING_ICON_MAP = {
 };
 
 const AI_FEATURES = [
-  "Modify itinerary",
-  "Ask travel questions",
-  "Add attractions",
-  "Change budget",
+  "Swap an activity",
+  "Reorder a day",
+  "Regenerate around budget / time / weather",
+  "Costs update live on the itinerary",
 ];
 
 function isNonMonetaryCost(cost) {
@@ -363,6 +363,7 @@ export default function TripItineraryView({
   aiFlashDays = [],
   aiBadgeDays = [],
   expensesHref = null,
+  onOpenAiAssistant = null,
 }) {
   const { tripMeta } = tripData;
   const destination = capitalizeDestination(tripData.destination);
@@ -1061,7 +1062,7 @@ export default function TripItineraryView({
                 </nav>
               </div>
 
-              {/* AI Assistant Pro */}
+              {/* AI Assistant Pro — opens the floating chat */}
               <div className="relative overflow-hidden rounded-[16px] bg-[#1E3A8A] p-5 text-white shadow-soft">
                 <ProBadge className="absolute top-4 right-4" />
                 <h3 className="flex items-center gap-2 text-sm font-bold">
@@ -1069,7 +1070,8 @@ export default function TripItineraryView({
                   AI Assistant
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-white/80">
-                  Edit itinerary, ask questions, add attractions and more.
+                  Your flagship editor — swap, reorder, or regenerate a day
+                  around a constraint. Changes update the itinerary live.
                 </p>
                 <ul className="mt-3 space-y-2">
                   {AI_FEATURES.map((feat) => (
@@ -1083,9 +1085,15 @@ export default function TripItineraryView({
                   ))}
                 </ul>
                 {isPro ? (
-                  <p className="mt-4 rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-medium text-white/90">
-                    Pro active — AI features unlocked
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenAiAssistant?.()}
+                    disabled={!onOpenAiAssistant}
+                    className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Open AI chat
+                  </button>
                 ) : (
                   <Link
                     href="/pricing"

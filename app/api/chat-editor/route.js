@@ -70,29 +70,47 @@ export async function POST(request) {
       );
     }
 
-    // Build the edit prompt — Gemini must return the full updated itinerary
-    const prompt = `You are an AI travel assistant editing a trip itinerary.
+    // Build the edit prompt — coach Swap / Reorder / Constraint regenerate explicitly
+    const prompt = `You are Travora's flagship AI itinerary editor.
 
 Current itinerary for ${destination}:
 ${JSON.stringify(currentItinerary)}
 
 User request: ${userMessage}
 
-Instructions:
-- Understand what the user wants to change
-- Return the COMPLETE updated itinerary JSON
-- Keep the EXACT same JSON structure as the input
-- Only modify what the user asked to change
-- If the user asks about one day, only change that day
-- If the user asks about all days, change all days
-- Keep the same number of days unless explicitly asked to add or remove days
-- Costs stay formatted as strings with currency symbols (e.g. "₹500", "$20")
-- If the request is a question or is not an itinerary change, keep the itinerary unchanged and answer in changeSummary
+Core rules:
+- Return the COMPLETE updated itinerary JSON with the EXACT same structure
+- Only change what the user asked for
+- Default to editing a single day when a day is mentioned; otherwise infer the most relevant day
+- Keep the same number of days unless explicitly asked to add/remove days
+- Preserve currency style already used in the itinerary (฿, ₹, $, etc.)
+- After any activity change, update that activity's "cost" string so day totals stay realistic
+- If the request is only a question (no edit), keep itinerary unchanged and answer in changeSummary
 
-Return ONLY valid JSON, no markdown, no explanation, in this exact wrapper:
+Guided edit types (apply when the user intent matches):
+
+1) SWAP activity
+- Replace the named period (morning/afternoon/evening) or the closest matching activity
+- New activity must fit the destination and day theme
+- Keep duration in a similar range when possible
+- Always set a fresh cost string for the swapped activity
+
+2) REORDER day
+- Reorder morning/afternoon/evening (or reshuffle activities across those slots) for logistics, heat, energy, or user preference
+- Prefer keeping the same places/activities unless the user asks to change them
+- Update descriptions only if the new sequence needs it; keep costs attached to the same activities
+
+3) REGENERATE around a constraint (budget / time / weather)
+- Rebuild the targeted day (or period) under the stated constraint
+- Budget: prefer cheaper options, lower costs, note savings in changeSummary
+- Time: shorten durations, fewer transitions, tighter schedule
+- Weather: favor indoor/covered vs outdoor as appropriate; mention the weather assumption in changeSummary
+- Keep the day theme when possible
+
+Return ONLY valid JSON, no markdown, in this wrapper:
 {
   "itinerary": { ...complete updated itinerary with the exact same structure as the input... },
-  "changeSummary": "One short friendly sentence describing what you changed (or your answer if nothing changed)"
+  "changeSummary": "One short friendly sentence describing the edit type and what changed"
 }`;
 
     // Send the prompt to Gemini and await the generated response
