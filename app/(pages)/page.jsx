@@ -670,17 +670,21 @@ export default function Home() {
     return parts.join(". ");
   }
 
-  // Resolve days + travelMonth from the active date tab for the API
+  // Resolve days + travelMonth (+ optional ISO range) from the active date tab
   function getTripDates() {
     if (dateTab === "specific") {
       return {
         days: daysBetweenISO(fromDate, toDate),
         travelMonth: monthYearFromISO(fromDate),
+        fromDate: fromDate || null,
+        toDate: toDate || null,
       };
     }
     return {
       days: flexibleDays,
       travelMonth: resolveTravelMonth(roughMonth),
+      fromDate: null,
+      toDate: null,
     };
   }
 
@@ -697,8 +701,14 @@ export default function Home() {
     }
 
     setDestinationError("");
-    const { days, travelMonth } = getTripDates();
-    generateTrip(e, { vibe: buildComposedVibe(), days, travelMonth });
+    const { days, travelMonth, fromDate: start, toDate: end } = getTripDates();
+    generateTrip(e, {
+      vibe: buildComposedVibe(),
+      days,
+      travelMonth,
+      fromDate: start,
+      toDate: end,
+    });
   }
 
   // Clicking a popular destination card pre-fills and marks as valid

@@ -6,6 +6,7 @@ import { checkRegenerationAllowed } from "@/lib/planLimits";
 import {
   FREE_REGENERATIONS_PER_TRIP,
 } from "@/constants/tripOptions";
+import { travelerPromptRules } from "@/lib/travelProfile";
 
 export async function POST(request) {
   try {
@@ -86,11 +87,14 @@ export async function POST(request) {
       ? `\nUser feedback for this day: "${feedback}". Honor this preference.`
       : "";
 
+    const travelerRules = travelerPromptRules(vibe);
+
     const prompt = `You are a travel planning expert. Regenerate ONLY day ${dayNumber} of a ${totalDays}-day trip to ${destination}.
 
 Travel preferences:
 - Budget: ${budget}
 - Vibe: ${vibe}${monthContext}${feedbackContext}
+${travelerRules}
 
 Current day ${dayNumber} (replace entirely — use different activities and places):
 ${JSON.stringify(currentDay, null, 2)}
@@ -110,6 +114,7 @@ Return ONLY valid JSON for a single day object. No markdown, no code fences, no 
 Requirements:
 - Provide fresh activities — do not repeat places from the current day above
 - Match the "${vibe}" vibe and "${budget}" budget
+- CRITICAL: Keep the same traveler type as the vibe (do not invent kids/family copy for Solo/Couple)
 - Use realistic places and costs for ${destination}
 - Costs as strings with currency symbols (e.g. "₹500", "$20")
 - Keep "day" as ${dayNumber}`;

@@ -27,7 +27,6 @@ import {
   Moon,
   Plus,
   RefreshCw,
-  Settings,
   Share2,
   Sparkles,
   Sun,
@@ -62,6 +61,11 @@ import OpenNowBadge from "@/components/trips/OpenNowBadge";
 import EditInviteControls from "@/components/trips/EditInviteControls";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
 import { parseTripVibe } from "@/lib/destinationLive";
+import {
+  formatTravelersLabel,
+  formatTripTypeLine,
+  resolveTravelProfile,
+} from "@/lib/travelProfile";
 import { createClient } from "@/lib/supabase/client";
 
 const DEFAULT_HERO =
@@ -73,8 +77,6 @@ const PERIODS = [
   { key: "evening", label: "EVENING", duration: "2 hrs", category: "Dinner" },
 ];
 
-const DAY_ICONS = [Sun, Settings, Sparkles, Zap];
-
 const PACKING_ICON_MAP = {
   "hiking boots": Footprints,
   sunscreen: Sun,
@@ -83,12 +85,82 @@ const PACKING_ICON_MAP = {
   "first aid kit": Cross,
 };
 
-const AI_FEATURES = [
-  "Swap an activity",
-  "Reorder a day",
-  "Regenerate around budget / time / weather",
-  "Costs update live on the itinerary",
+/** Sidebar checklist → tappable prompts that open AI chat prefilled */
+const AI_QUICK_PROMPTS = [
+  {
+    label: "Swap an activity",
+    prompt:
+      "Swap the afternoon activity on Day 1 for a different option that still matches my traveler type and interests, and update its cost.",
+  },
+  {
+    label: "Ask travel questions",
+    prompt:
+      "Quick question — what's the best local tip for Day 1 without changing my itinerary yet?",
+  },
+  {
+    label: "Add attractions",
+    prompt:
+      "Add one new attraction that fits my trip type and interests — place it in an open slot or replace the weakest stop, and update costs.",
+  },
+  {
+    label: "Change budget",
+    prompt:
+      "Regenerate Day 2 around a tighter budget while keeping my traveler type the same, and update activity costs.",
+  },
 ];
+
+function formatOverviewDate(iso) {
+  if (!iso) return null;
+  try {
+    return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return null;
+  }
+}
+
+function buildOverviewSchedule(tripData, tripMeta, dayCount) {
+  const from = tripData.fromDate || tripMeta?.fromDate;
+  const to = tripData.toDate || tripMeta?.toDate;
+  const fromLabel = formatOverviewDate(from);
+  const toLabel = formatOverviewDate(to);
+
+  if (fromLabel && toLabel) {
+    const end = new Date(`${to}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPast = end < today;
+    return {
+      startLabel: "Start",
+      startValue: fromLabel,
+      endLabel: "End",
+      endValue: isPast ? `${toLabel} · Past` : toLabel,
+      isPast,
+    };
+  }
+
+  const month = tripData.travelMonth || tripMeta?.travelMonth;
+  if (month) {
+    return {
+      startLabel: "Timing",
+      startValue: `Roughly ${month}`,
+      endLabel: "Length",
+      endValue: `${dayCount} days`,
+      isPast: false,
+    };
+  }
+
+  return {
+    startLabel: "Timing",
+    startValue: "Flexible",
+    endLabel: "Length",
+    endValue: `${dayCount} days`,
+    isPast: false,
+  };
+}
 
 function isNonMonetaryCost(cost) {
   if (!cost) return true;
@@ -376,14 +448,29 @@ export default function TripItineraryView({
   const dayCount = tripData.days?.length ?? tripMeta?.days ?? 0;
   const activityCount = countActivities(tripData.days);
   const placeCount = countPlaces(tripData.days);
-  const tripVibeParsed = parseTripVibe(tripMeta?.vibe);
+  const travelProfile = resolveTravelProfile(tripData, tripMeta?.vibe);
+  const tripVibeParsed = {
+    styleParts: formatTripTypeLine(travelProfile)
+      ? formatTripTypeLine(travelProfile).split(" · ")
+      : parseTripVibe(tripMeta?.vibe).styleParts,
+    interests: travelProfile.interests?.length
+      ? travelProfile.interests
+      : parseTripVibe(tripMeta?.vibe).interests,
+  };
   const vibeShort =
+    formatTripTypeLine(travelProfile) ||
     tripVibeParsed.styleParts.join(" · ") ||
     tripMeta?.vibe?.split(". Interests:")[0]?.trim() ||
     "";
   const budget = tripData.totalBudgetEstimate || tripMeta?.budget || "₹42,500";
   const budgetCap = tripMeta?.budget || "₹50,000";
   const budgetDisplay = formatBudgetDisplay(budget, budgetCap, vibeShort);
+  const overviewSchedule = buildOverviewSchedule(
+    tripData,
+    tripMeta,
+    dayCount
+  );
+  const travelersLabel = formatTravelersLabel(travelProfile);
   const aiPlannedSpend = computePlannedSpend(
     tripData.days,
     tripData.totalBudgetEstimate || tripMeta?.budget
@@ -1075,17 +1162,21 @@ export default function TripItineraryView({
                   AI Assistant
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-white/80">
-                  Your flagship editor — swap, reorder, or regenerate a day
-                  around a constraint. Changes update the itinerary live.
+                  Your flagship editor — tap a prompt below or open chat.
+                  Changes update the itinerary live.
                 </p>
                 <ul className="mt-3 space-y-2">
-                  {AI_FEATURES.map((feat) => (
-                    <li
-                      key={feat}
-                      className="flex items-center gap-2 text-sm text-white/75"
-                    >
-                      <Check className="h-3.5 w-3.5 shrink-0 text-[#F97316]" />
-                      {feat}
+                  {AI_QUICK_PROMPTS.map((feat) => (
+                    <li key={feat.label}>
+                      <button
+                        type="button"
+                        onClick={() => onOpenAiAssistant?.(feat.prompt)}
+                        disabled={!onOpenAiAssistant}
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-left text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Check className="h-3.5 w-3.5 shrink-0 text-[#F97316]" />
+                        {feat.label}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -1117,22 +1208,22 @@ export default function TripItineraryView({
                 <dl className="space-y-3">
                   <OverviewRow
                     icon={Calendar}
-                    label="Start Date"
-                    value="Oct 12, 2024"
+                    label={overviewSchedule.startLabel}
+                    value={overviewSchedule.startValue}
                   />
                   <OverviewRow
                     icon={Calendar}
-                    label="End Date"
-                    value={`Oct ${12 + dayCount - 1}, 2024`}
+                    label={overviewSchedule.endLabel}
+                    value={overviewSchedule.endValue}
                   />
                   <OverviewRow
                     icon={Users}
                     label="Travelers"
-                    value="2 Adults"
+                    value={travelersLabel}
                   />
                 </dl>
 
-                <TripTypeBlock vibeParts={tripVibe} />
+                <TripTypeBlock vibeParts={tripVibeParsed} />
               </div>
             </div>
           </aside>
@@ -1143,7 +1234,8 @@ export default function TripItineraryView({
               const isExpanded = expandedDays.has(day.day);
               const dayCostTotal = sumDayCost(day);
               const slots = PERIODS.filter((p) => day[p.key]);
-              const DayIcon = DAY_ICONS[dayIndex % DAY_ICONS.length];
+              // Consistent day marker (not rotating theme icons)
+              const DayIcon = Calendar;
               // AI chat editor highlight state for this day card
               const isAiFlash = aiFlashDays.includes(day.day);
               const hasAiBadge = aiBadgeDays.includes(day.day);
@@ -1163,8 +1255,11 @@ export default function TripItineraryView({
                     className={`scroll-mt-28 relative mb-3 flex w-full cursor-pointer items-center gap-4 rounded-xl bg-[#F1F5F9] px-4 py-4 text-left transition-shadow duration-700 hover:bg-[#E2E8F0] md:px-5 ${isAiFlash ? "ai-day-flash" : ""}`}
                   >
                     {aiBadge}
-                    <div className="timeline-day-node !h-10 !w-10">
-                      <DayIcon className="h-5 w-5" />
+                    <div
+                      className="timeline-day-node !h-10 !w-10"
+                      title={`Day ${day.day}`}
+                    >
+                      <DayIcon className="h-5 w-5" aria-hidden="true" />
                     </div>
                     <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
                       <div className="min-w-0">

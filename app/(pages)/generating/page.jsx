@@ -73,11 +73,16 @@ export default function GeneratingPage() {
 
         const storedTrip = {
           ...data,
+          travelProfile: data.travelProfile,
+          fromDate: data.fromDate || payload.fromDate || null,
+          toDate: data.toDate || payload.toDate || null,
           tripMeta: {
             days: payload.days,
             budget: payload.budget,
             vibe: payload.vibe,
             travelMonth: payload.travelMonth,
+            fromDate: payload.fromDate || null,
+            toDate: payload.toDate || null,
           },
         };
 

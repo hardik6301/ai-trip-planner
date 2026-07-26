@@ -75,6 +75,7 @@ export default function ResultsPage() {
   const [aiFlashDays, setAiFlashDays] = useState([]); // orange border flash (1.5s)
   const [aiBadgeDays, setAiBadgeDays] = useState([]); // "✓ Updated by AI" badge (3s)
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [draftPrompt, setDraftPrompt] = useState(null);
   const aiTimersRef = useRef([]);
 
   // Highlight + badge the changed day cards, then scroll the first one into view
@@ -265,7 +266,12 @@ export default function ResultsPage() {
         aiFlashDays={aiFlashDays}
         aiBadgeDays={aiBadgeDays}
         saveButton={renderSaveButton()}
-        onOpenAiAssistant={() => setAiChatOpen(true)}
+        onOpenAiAssistant={(prompt) => {
+          if (typeof prompt === "string" && prompt.trim()) {
+            setDraftPrompt(prompt.trim());
+          }
+          setAiChatOpen(true);
+        }}
         footerExtra={
           <div className="space-y-3 text-center">
             {!userLoggedIn && (
@@ -299,6 +305,8 @@ export default function ResultsPage() {
         tripId={savedTripId}
         open={aiChatOpen}
         onOpenChange={setAiChatOpen}
+        draftPrompt={draftPrompt}
+        onDraftPromptConsumed={() => setDraftPrompt(null)}
       />
     </div>
   );

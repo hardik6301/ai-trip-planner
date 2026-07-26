@@ -55,6 +55,8 @@ export function useTrip() {
       budget: overrides.budget ?? budget,
       vibe: overrides.vibe ?? vibe,
       travelMonth: overrides.travelMonth ?? null,
+      fromDate: overrides.fromDate ?? null,
+      toDate: overrides.toDate ?? null,
     };
 
     sessionStorage.setItem(PENDING_TRIP_REQUEST_KEY, JSON.stringify(payload));

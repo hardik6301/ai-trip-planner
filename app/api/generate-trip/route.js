@@ -2,6 +2,10 @@
 import { NextResponse } from "next/server";
 // Import shared Gemini client initialization from lib
 import { getGeminiModel } from "@/lib/gemini";
+import {
+  parseTravelProfile,
+  travelerPromptRules,
+} from "@/lib/travelProfile";
 
 // Handle POST requests to generate a trip itinerary
 export async function POST(request) {
@@ -9,7 +13,8 @@ export async function POST(request) {
     // Parse the JSON body from the incoming request
     const body = await request.json();
     // Extract trip fields from the request body
-    const { destination, days, budget, vibe, travelMonth } = body;
+    const { destination, days, budget, vibe, travelMonth, fromDate, toDate } =
+      body;
 
     // Validate that all required fields are present
     if (!destination || !days || !budget || !vibe) {
@@ -37,12 +42,16 @@ export async function POST(request) {
       ? `\nThe user is planning to travel in ${travelMonth}. Factor in weather, festivals, and seasonal tips for that month.`
       : "";
 
+    const travelerRules = travelerPromptRules(vibe);
+    const travelProfile = parseTravelProfile(vibe);
+
     // Build the prompt instructing Gemini to return a structured trip itinerary as JSON
     const prompt = `You are a travel planning expert. Create a detailed ${days}-day trip itinerary for ${destination}.
 
 Travel preferences:
 - Budget: ${budget}
 - Vibe: ${vibe}${monthContext}
+${travelerRules}
 
 Return ONLY valid JSON with no markdown, no code fences, and no extra text. Use this exact structure:
 
@@ -68,6 +77,7 @@ Requirements:
 - Include exactly ${days} day objects in the "days" array (day 1 through day ${days})
 - Use realistic activities, places, and costs for ${destination}
 - Match activities to the "${vibe}" vibe and "${budget}" budget
+- CRITICAL: Every description/tip/theme must match the traveler type in the vibe (Solo ≠ family with kids)
 - Costs should be formatted as strings with currency symbols (e.g. "₹500", "$20")
 - packingEssentials should include at least 5 relevant items`;
 
@@ -84,6 +94,12 @@ Requirements:
 
     // Parse the cleaned response string into a JavaScript object
     const tripData = JSON.parse(cleanedText);
+
+    // Persist structured profile so Overview never drifts from form preferences
+    tripData.travelProfile = travelProfile;
+    if (fromDate) tripData.fromDate = fromDate;
+    if (toDate) tripData.toDate = toDate;
+    if (travelMonth) tripData.travelMonth = travelMonth;
 
     // Return the parsed trip itinerary as a JSON response
     return NextResponse.json(tripData);

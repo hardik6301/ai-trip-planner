@@ -9,6 +9,10 @@ import { createClient } from "@/lib/supabase/server";
 // Import the Pro status helper that reads profiles.is_pro
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
 import { canEditTripAccess, getTripAccess } from "@/lib/tripAccess";
+import {
+  parseTravelProfile,
+  travelerPromptRules,
+} from "@/lib/travelProfile";
 
 /**
  * POST /api/chat-editor
@@ -88,6 +92,12 @@ export async function POST(request) {
       );
     }
 
+    const vibeHint =
+      currentItinerary?.tripMeta?.vibe ||
+      currentItinerary?.travelProfile?.raw ||
+      "";
+    const travelerRules = vibeHint ? travelerPromptRules(vibeHint) : "";
+
     // Build the edit prompt — coach Swap / Reorder / Constraint regenerate explicitly
     const prompt = `You are Travora's flagship AI itinerary editor.
 
@@ -95,6 +105,7 @@ Current itinerary for ${destination}:
 ${JSON.stringify(currentItinerary)}
 
 User request: ${userMessage}
+${travelerRules}
 
 Core rules:
 - Return the COMPLETE updated itinerary JSON with the EXACT same structure
@@ -103,13 +114,16 @@ Core rules:
 - Keep the same number of days unless explicitly asked to add/remove days
 - Preserve currency style already used in the itinerary (฿, ₹, $, etc.)
 - After any activity change, update that activity's "cost" string so day totals stay realistic
+- Preserve travelProfile and tripMeta unless the user explicitly changes traveler type (Solo/Couple/Family/Friends)
+- If the user changes traveler type, update travelProfile AND rewrite affected copy so metadata and descriptions stay in sync
+- Never invent family/kids language for a Solo or Couple profile
 - If the request is only a question (no edit), keep itinerary unchanged and answer in changeSummary
 
 Guided edit types (apply when the user intent matches):
 
 1) SWAP activity
 - Replace the named period (morning/afternoon/evening) or the closest matching activity
-- New activity must fit the destination and day theme
+- New activity must fit the destination, day theme, and traveler profile
 - Keep duration in a similar range when possible
 - Always set a fresh cost string for the swapped activity
 
@@ -123,7 +137,7 @@ Guided edit types (apply when the user intent matches):
 - Budget: prefer cheaper options, lower costs, note savings in changeSummary
 - Time: shorten durations, fewer transitions, tighter schedule
 - Weather: favor indoor/covered vs outdoor as appropriate; mention the weather assumption in changeSummary
-- Keep the day theme when possible
+- Keep the day theme and traveler profile when possible
 
 Return ONLY valid JSON, no markdown, in this wrapper:
 {
@@ -151,12 +165,23 @@ Return ONLY valid JSON, no markdown, in this wrapper:
     }
 
     // Preserve client-side fields Gemini shouldn't touch (meta, regen counter)
+    // Keep travelProfile in sync with vibe if the model omitted it
+    const vibeForProfile =
+      updatedItinerary.tripMeta?.vibe ||
+      currentItinerary.tripMeta?.vibe ||
+      updatedItinerary.travelProfile?.raw ||
+      currentItinerary.travelProfile?.raw ||
+      "";
     const merged = {
       ...currentItinerary,
       ...updatedItinerary,
       destination: currentItinerary.destination,
       tripMeta: currentItinerary.tripMeta,
       regenerationsUsed: currentItinerary.regenerationsUsed,
+      travelProfile:
+        updatedItinerary.travelProfile ||
+        currentItinerary.travelProfile ||
+        (vibeForProfile ? parseTravelProfile(vibeForProfile) : undefined),
     };
 
     // Return the updated itinerary and the human-readable summary

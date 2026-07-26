@@ -24,6 +24,7 @@ export default function SavedTripView({ trip, ownerId }) {
   const [canEdit, setCanEdit] = useState(false);
   const [role, setRole] = useState("viewer");
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [draftPrompt, setDraftPrompt] = useState(null);
   const [conflictBanner, setConflictBanner] = useState("");
 
   const [aiFlashDays, setAiFlashDays] = useState([]);
@@ -188,7 +189,14 @@ export default function SavedTripView({ trip, ownerId }) {
         saveButton={false}
         showEditInvite={isOwner}
         onOpenAiAssistant={
-          canEdit && isPro ? () => setAiChatOpen(true) : null
+          canEdit
+            ? (prompt) => {
+                if (typeof prompt === "string" && prompt.trim()) {
+                  setDraftPrompt(prompt.trim());
+                }
+                setAiChatOpen(true);
+              }
+            : null
         }
         footerExtra={
           <div className="text-center">
@@ -215,6 +223,8 @@ export default function SavedTripView({ trip, ownerId }) {
           onVersionConflict={handleVersionConflict}
           open={aiChatOpen}
           onOpenChange={setAiChatOpen}
+          draftPrompt={draftPrompt}
+          onDraftPromptConsumed={() => setDraftPrompt(null)}
         />
       )}
     </>
@@ -222,14 +232,22 @@ export default function SavedTripView({ trip, ownerId }) {
 }
 
 function buildTripData(trip) {
+  const itinerary = trip.itinerary || {};
   return {
-    ...trip.itinerary,
+    ...itinerary,
     destination: capitalizeDestination(trip.destination),
-    regenerationsUsed: trip.itinerary?.regenerationsUsed ?? 0,
+    regenerationsUsed: itinerary.regenerationsUsed ?? 0,
+    fromDate: itinerary.fromDate || null,
+    toDate: itinerary.toDate || null,
+    travelMonth: itinerary.travelMonth || null,
+    travelProfile: itinerary.travelProfile || undefined,
     tripMeta: {
       days: trip.days,
       budget: trip.budget,
       vibe: trip.vibe,
+      fromDate: itinerary.fromDate || null,
+      toDate: itinerary.toDate || null,
+      travelMonth: itinerary.travelMonth || null,
     },
   };
 }

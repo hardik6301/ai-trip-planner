@@ -90,6 +90,8 @@ export default function TripChatEditor({
   onVersionConflict = null,
   open: openProp,
   onOpenChange = null,
+  draftPrompt = null,
+  onDraftPromptConsumed = null,
 }) {
   const isControlled = typeof openProp === "boolean";
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -115,6 +117,14 @@ export default function TripChatEditor({
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [chatMessages, isChatLoading, open]);
+
+  // Prefill from sidebar checklist / parent
+  useEffect(() => {
+    if (!open || !draftPrompt) return;
+    setChatInput(draftPrompt);
+    onDraftPromptConsumed?.();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [open, draftPrompt, onDraftPromptConsumed]);
 
   async function sendChatMessage(text) {
     const message = (text ?? chatInput).trim();
