@@ -19,7 +19,7 @@ const FREE_FEATURES = [
   "Save up to 5 trips",
   "3 day regenerations per trip",
   "PDF itinerary export",
-  "Shareable trip links + WhatsApp",
+  "Shareable trip links + WhatsApp day digests",
   "Google Maps links on activities",
   "Live weather & currency",
   "Real destination photos",

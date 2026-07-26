@@ -43,13 +43,16 @@ import { FREE_REGENERATIONS_PER_TRIP } from "@/constants/tripOptions";
 import { useToast } from "@/components/ui/Toast";
 import ProBadge from "@/components/ui/ProBadge";
 import {
-  buildTripShareMessage,
   buildTripShareText,
   getTripShareUrl,
   openWhatsAppShare,
   sanitizeTripId,
   shareTripNative,
 } from "@/utils/shareTrip";
+import {
+  buildWhatsAppDayDigest,
+  listDigestDays,
+} from "@/utils/whatsappDigest";
 import { downloadTripPdf } from "@/utils/downloadTripPdf";
 import { getGoogleMapsLink } from "@/utils/googleMaps";
 import { formatMoney, parseBudgetRange } from "@/utils/expenseBudget";
@@ -398,6 +401,7 @@ export default function TripItineraryView({
   const [regenerateError, setRegenerateError] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [whatsappDayPickerOpen, setWhatsappDayPickerOpen] = useState(false);
   // Custom activity builder (Pro)
   const [activityModal, setActivityModal] = useState(null); // { dayNumber }
   const [activityForm, setActivityForm] = useState({
@@ -562,15 +566,9 @@ export default function TripItineraryView({
       destination: title,
       dayCount,
     });
-    const whatsappText = buildTripShareMessage({
-      destination: title,
-      dayCount,
-      url,
-    });
     return {
       url,
       shareText,
-      whatsappText,
       title: `${title} | Travora`,
     };
   }
@@ -601,12 +599,30 @@ export default function TripItineraryView({
     }
   }
 
-  function handleWhatsAppShare() {
-    if (!canShare || shareBusy) return;
+  /** WhatsApp = day digest (not a duplicate of Share’s link) */
+  function sendWhatsAppDayDigest(dayNumber) {
+    if (!tripData?.days?.length) return;
 
-    const { whatsappText } = getSharePayload();
-    openWhatsAppShare(whatsappText);
-    showToast("Opening WhatsApp…", "info");
+    const url = canShare ? getTripShareUrl(activeShareId) : "";
+    const digest = buildWhatsAppDayDigest({
+      tripData: { ...tripData, destination: title },
+      dayNumber,
+      url,
+    });
+    openWhatsAppShare(digest);
+    setWhatsappDayPickerOpen(false);
+    showToast(`Day ${dayNumber} digest ready in WhatsApp`, "success");
+  }
+
+  function handleWhatsAppDigest() {
+    if (!tripData?.days?.length) return;
+
+    const days = listDigestDays(tripData);
+    if (days.length <= 1) {
+      sendWhatsAppDayDigest(days[0]?.day ?? 1);
+      return;
+    }
+    setWhatsappDayPickerOpen(true);
   }
 
   /** Download itinerary as a formatted PDF */
@@ -864,7 +880,7 @@ export default function TripItineraryView({
                   disabled={!canShare || shareBusy}
                   title={
                     canShare
-                      ? "Share your saved trip link"
+                      ? "Copy or share your saved trip link"
                       : "Save this trip first to get a shareable link"
                   }
                   className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-45"
@@ -874,13 +890,9 @@ export default function TripItineraryView({
                 </button>
                 <button
                   type="button"
-                  onClick={handleWhatsAppShare}
-                  disabled={!canShare || shareBusy}
-                  title={
-                    canShare
-                      ? "Share on WhatsApp"
-                      : "Save this trip first to share on WhatsApp"
-                  }
+                  onClick={handleWhatsAppDigest}
+                  disabled={!tripData?.days?.length}
+                  title="Send a formatted day itinerary via WhatsApp"
                   className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 px-3 py-2 text-xs font-medium text-[#128C7E] transition-colors hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   <WhatsAppIcon className="h-3.5 w-3.5" />
@@ -889,7 +901,7 @@ export default function TripItineraryView({
               </div>
               {!canShare && (
                 <p className="text-center text-[10px] leading-snug text-[#94A3B8]">
-                  Save trip to unlock sharing
+                  Save trip to unlock Share link · WhatsApp works now
                 </p>
               )}
               <button
@@ -1387,7 +1399,44 @@ export default function TripItineraryView({
         </div>
       </div>
 
-      {/* Custom activity builder modal (Pro) */}
+      {/* WhatsApp day digest picker */}
+      <Modal
+        isOpen={whatsappDayPickerOpen}
+        onClose={() => setWhatsappDayPickerOpen(false)}
+        title="Send day digest on WhatsApp"
+      >
+        <p className="mb-4 text-sm text-[#64748B]">
+          Pick a day to send as a formatted itinerary message. Share still
+          handles the trip link.
+        </p>
+        <div className="max-h-[320px] space-y-2 overflow-y-auto">
+          {listDigestDays(tripData).map((d) => (
+            <button
+              key={d.day}
+              type="button"
+              onClick={() => sendWhatsAppDayDigest(d.day)}
+              className={`flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors hover:border-[#25D366]/50 hover:bg-[#25D366]/5 ${
+                Number(d.day) === Number(activeDay)
+                  ? "border-[#25D366]/40 bg-[#25D366]/5"
+                  : "border-[#E2E8F0]"
+              }`}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0F172A] text-xs font-bold text-white">
+                {String(d.day).padStart(2, "0")}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-[#0F172A]">
+                  Day {d.day}
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-[#64748B]">
+                  {d.theme}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Modal>
+
       <Modal
         isOpen={Boolean(activityModal)}
         onClose={() => !activitySaving && setActivityModal(null)}
