@@ -20,6 +20,12 @@ export const metadata: Metadata = {
   description: "Plan your perfect trip with AI-powered itineraries",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -46,7 +52,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col font-sans">
         <Toaster>
           <Navbar />
-          <main className="flex-1 pt-[72px]">{children}</main>
+          <main className="flex-1 pt-[64px] sm:pt-[72px]">{children}</main>
           <Footer />
         </Toaster>
       </body>

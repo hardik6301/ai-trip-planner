@@ -722,13 +722,13 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-surface text-on-surface font-sans">
+    <div className="overflow-x-hidden bg-surface font-sans text-on-surface">
       {/* ─── Hero — full-width mountain background, headline left, form right ─── */}
-      <section className="relative flex min-h-[700px] items-center overflow-hidden lg:min-h-[921px]">
+      <section className="relative flex min-h-[min(100dvh,820px)] items-center overflow-hidden sm:min-h-[640px] lg:min-h-[921px]">
         {/* Background image — WanderAI Dolomites with light overlay + bottom fade */}
         <div className="absolute inset-0 z-0">
           <div
-            className="h-full w-full bg-cover bg-center"
+            className="h-full w-full bg-cover bg-center bg-no-repeat"
             style={{ backgroundImage: `url('${HERO_IMAGE}')` }}
             role="img"
             aria-label="Mountain landscape"
@@ -737,15 +737,16 @@ export default function Home() {
           <div className="hero-gradient absolute inset-0" />
         </div>
 
-        <div className="relative z-10 mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-10 px-5 py-12 md:px-6 lg:grid-cols-12 lg:gap-10">
+        <div className="relative z-10 mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-6 px-4 py-8 sm:gap-8 sm:px-5 sm:py-10 md:px-6 md:py-12 lg:grid-cols-12 lg:gap-10 lg:py-16">
           {/* Left — headline and subheading */}
-          <div className="space-y-4 text-white lg:col-span-7">
-            <h1 className="text-[42px] leading-tight font-extrabold tracking-tight text-white drop-shadow-xl md:text-[56px]">
-              Plan Your Perfect <br />
+          <div className="space-y-3 text-white sm:space-y-4 lg:col-span-7">
+            <h1 className="text-[clamp(1.875rem,6vw,3.5rem)] leading-[1.1] font-extrabold tracking-tight text-white drop-shadow-xl">
+              Plan Your Perfect
+              <br />
               Trip with{" "}
               <span className="text-secondary-container">AI</span>
             </h1>
-            <p className="max-w-xl text-lg text-white/90 drop-shadow-md md:text-xl">
+            <p className="max-w-xl text-base leading-relaxed text-white/90 drop-shadow-md sm:text-lg md:text-xl">
               Tell us where you want to go, we&apos;ll handle the rest.
               Personal itineraries crafted by intelligence, inspired by your
               unique travel soul.
@@ -753,11 +754,11 @@ export default function Home() {
           </div>
 
           {/* Right — floating glass form card */}
-          <div className="lg:col-span-5">
-            <div className="space-y-5 rounded-xl border border-outline-variant/30 bg-white p-6 shadow-2xl md:p-8">
+          <div className="w-full min-w-0 lg:col-span-5">
+            <div className="space-y-4 rounded-xl border border-outline-variant/30 bg-white p-4 shadow-2xl sm:space-y-5 sm:p-6 md:p-8">
               <form
                 onSubmit={handleSubmit}
-                className={`space-y-5 ${isGenerating ? "pointer-events-none opacity-80" : ""}`}
+                className={`space-y-4 sm:space-y-5 ${isGenerating ? "pointer-events-none opacity-80" : ""}`}
               >
                 {/* Start Planning header + Geoapify city autocomplete */}
                 <div className="space-y-2">
@@ -786,7 +787,7 @@ export default function Home() {
                       aria-autocomplete="list"
                       aria-expanded={dropdownOpen}
                       aria-controls="destination-suggestions"
-                      className="w-full rounded-lg border border-outline-variant bg-white py-3 pr-10 pl-10 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-lg border border-outline-variant bg-white py-3 pr-10 pl-10 text-base text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
                     />
 
                     {/* Loading spinner or clear button — right inside input */}
@@ -884,11 +885,11 @@ export default function Home() {
 
                 {/* Date mode tabs — Specific Dates vs I'll decide later */}
                 <div className="space-y-3">
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setDateTab("specific")}
-                      className={`flex-1 cursor-pointer rounded-full border px-3 py-2 text-sm font-medium ${
+                      className={`min-h-11 cursor-pointer rounded-full border px-2 py-2.5 text-xs font-medium sm:px-3 sm:text-sm ${
                         dateTab === "specific"
                           ? "border-primary-container bg-primary-container text-white"
                           : "border-outline-variant bg-white text-on-surface-variant"
@@ -899,13 +900,16 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setDateTab("flexible")}
-                      className={`flex-1 cursor-pointer rounded-full border px-3 py-2 text-sm font-medium ${
+                      className={`min-h-11 cursor-pointer rounded-full border px-2 py-2.5 text-xs font-medium sm:px-3 sm:text-sm ${
                         dateTab === "flexible"
                           ? "border-primary-container bg-primary-container text-white"
                           : "border-outline-variant bg-white text-on-surface-variant"
                       }`}
                     >
-                      I&apos;ll decide later
+                      <span className="sm:hidden">Flexible</span>
+                      <span className="hidden sm:inline">
+                        I&apos;ll decide later
+                      </span>
                     </button>
                   </div>
 
@@ -929,7 +933,7 @@ export default function Home() {
                           onChange={(e) =>
                             setFlexibleDays(Number(e.target.value))
                           }
-                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-3 text-base text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:py-2 sm:text-sm"
                         />
                       </div>
                       <div className="space-y-1">
@@ -943,7 +947,7 @@ export default function Home() {
                           id="roughMonth"
                           value={roughMonth}
                           onChange={(e) => setRoughMonth(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-3 text-base text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:py-2 sm:text-sm"
                         >
                           {ROUGH_MONTH_OPTIONS.map((opt) => (
                             <option key={opt.value || "any"} value={opt.value}>
@@ -958,6 +962,7 @@ export default function Home() {
                   {/* Specific dates tab — from/to pickers with auto day count */}
                   {dateTab === "specific" && (
                     <div className="space-y-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <label
                           htmlFor="fromDate"
@@ -972,7 +977,7 @@ export default function Home() {
                           min={todayISO}
                           value={fromDate}
                           onChange={(e) => setFromDate(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="w-full min-w-0 rounded-lg border border-outline-variant bg-white px-3 py-3 text-base text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:px-4 sm:py-2 sm:text-sm"
                         />
                       </div>
                       <div className="space-y-1">
@@ -989,8 +994,9 @@ export default function Home() {
                           min={toDateMin}
                           value={toDate}
                           onChange={(e) => setToDate(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="w-full min-w-0 rounded-lg border border-outline-variant bg-white px-3 py-3 text-base text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:px-4 sm:py-2 sm:text-sm"
                         />
+                      </div>
                       </div>
                       {fromDate && toDate && (
                         <p className="text-sm font-medium text-secondary-container">
@@ -1015,7 +1021,7 @@ export default function Home() {
                     required
                     value={budget}
                     onChange={(e) => setBudget(e.target.value)}
-                    className="w-full rounded-lg border border-outline-variant bg-white px-4 py-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-lg border border-outline-variant bg-white px-4 py-3 text-base text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:py-2 sm:text-sm"
                   >
                     {BUDGET_OPTIONS.map((option) => (
                       <option key={option} value={option}>
@@ -1038,13 +1044,13 @@ export default function Home() {
                           key={id}
                           type="button"
                           onClick={() => setTravelerType(id)}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
+                          className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border p-2.5 sm:gap-3 sm:p-3 ${
                             selected
                               ? "border-primary bg-secondary-container text-white shadow-md"
                               : "border-outline-variant bg-white text-primary"
                           }`}
                         >
-                          <span className="material-symbols-outlined text-[20px]">
+                          <span className="material-symbols-outlined shrink-0 text-[20px]">
                             {icon}
                           </span>
                           <span className="text-sm font-medium">{label}</span>
@@ -1067,7 +1073,7 @@ export default function Home() {
                           key={option}
                           type="button"
                           onClick={() => setVibe(option)}
-                          className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                          className={`min-h-9 cursor-pointer rounded-full border px-2.5 py-1.5 text-[11px] font-semibold sm:px-3 sm:text-xs ${
                             selected
                               ? "border-[#F97316] bg-[#F97316] text-white"
                               : "border-[#E2E8F0] bg-white text-[#1E3A8A]"
@@ -1093,7 +1099,7 @@ export default function Home() {
                           key={interest}
                           type="button"
                           onClick={() => toggleInterest(interest)}
-                          className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                          className={`min-h-9 cursor-pointer rounded-full border px-2.5 py-1.5 text-[11px] font-semibold sm:px-3 sm:text-xs ${
                             selected
                               ? "border-[#F97316] bg-[#F97316] text-white"
                               : "border-[#E2E8F0] bg-white text-[#1E3A8A]"
@@ -1110,7 +1116,7 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={isGenerating}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-secondary-container py-4 text-base font-bold text-white shadow-lg hover:bg-secondary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-90"
+                  className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-secondary-container py-3.5 text-sm font-bold text-white shadow-lg hover:bg-secondary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-90 sm:py-4 sm:text-base"
                 >
                   {isGenerating ? (
                     <>
@@ -1135,21 +1141,21 @@ export default function Home() {
       </section>
 
       {/* ─── Popular Destinations — horizontal scroll ─── */}
-      <section className="bg-surface py-10 md:py-12">
-        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="mb-6 flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-primary md:text-3xl">
+      <section className="bg-surface py-8 sm:py-10 md:py-12">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-5 md:px-6">
+          <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-primary sm:text-2xl md:text-3xl">
                 Popular Destinations
               </h2>
-              <p className="text-on-surface-variant">
+              <p className="mt-1 text-sm text-on-surface-variant sm:text-base">
                 Trending places curated by our global community
               </p>
             </div>
             <button
               type="button"
               onClick={() => setShowAllDestinations((v) => !v)}
-              className="flex cursor-pointer items-center gap-1 text-sm font-bold text-secondary-container transition-colors hover:text-secondary"
+              className="flex w-fit shrink-0 cursor-pointer items-center gap-1 text-sm font-bold text-secondary-container transition-colors hover:text-secondary"
               aria-expanded={showAllDestinations}
             >
               {showAllDestinations ? "Show Less" : "View All"}
@@ -1160,7 +1166,7 @@ export default function Home() {
           </div>
 
           {showAllDestinations ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
               {POPULAR_DESTINATIONS.map((dest) => (
                 <button
                   key={dest.name}
@@ -1168,7 +1174,7 @@ export default function Home() {
                   onClick={() => handleDestinationPick(dest.name, dest.region)}
                   className="cursor-pointer text-left"
                 >
-                  <div className="relative h-[220px] overflow-hidden rounded-xl md:h-[280px]">
+                  <div className="relative aspect-[3/4] max-h-[280px] overflow-hidden rounded-xl sm:h-[220px] sm:max-h-none sm:aspect-auto md:h-[280px]">
                     <img
                       src={dest.image}
                       alt={dest.name}
@@ -1177,16 +1183,20 @@ export default function Home() {
                       className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    <div className="absolute bottom-0 left-0 p-4 text-white">
-                      <h4 className="text-lg font-bold">{dest.name}</h4>
-                      <p className="text-sm text-white/80">{dest.region}</p>
+                    <div className="absolute bottom-0 left-0 p-3 text-white sm:p-4">
+                      <h4 className="text-base font-bold sm:text-lg">
+                        {dest.name}
+                      </h4>
+                      <p className="text-xs text-white/80 sm:text-sm">
+                        {dest.region}
+                      </p>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="flex gap-6 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 snap-x snap-mandatory scroll-px-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:gap-5 sm:px-0 sm:scroll-px-0 md:gap-6 [&::-webkit-scrollbar]:hidden">
               {POPULAR_DESTINATIONS.slice(0, POPULAR_PREVIEW_COUNT).map(
                 (dest) => (
                   <button
@@ -1195,9 +1205,9 @@ export default function Home() {
                     onClick={() =>
                       handleDestinationPick(dest.name, dest.region)
                     }
-                    className="min-w-[280px] shrink-0 cursor-pointer text-left"
+                    className="w-[min(72vw,260px)] shrink-0 snap-start cursor-pointer text-left sm:w-[280px]"
                   >
-                    <div className="relative h-[380px] overflow-hidden rounded-xl">
+                    <div className="relative h-[280px] overflow-hidden rounded-xl sm:h-[340px] md:h-[380px]">
                       <img
                         src={dest.image}
                         alt={dest.name}
@@ -1206,9 +1216,13 @@ export default function Home() {
                         className="h-full w-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                      <div className="absolute bottom-0 left-0 p-4 text-white">
-                        <h4 className="text-lg font-bold">{dest.name}</h4>
-                        <p className="text-sm text-white/80">{dest.region}</p>
+                      <div className="absolute bottom-0 left-0 p-3 text-white sm:p-4">
+                        <h4 className="text-base font-bold sm:text-lg">
+                          {dest.name}
+                        </h4>
+                        <p className="text-xs text-white/80 sm:text-sm">
+                          {dest.region}
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -1220,58 +1234,60 @@ export default function Home() {
       </section>
 
       {/* ─── How It Works — 3 simple steps ─── */}
-      <section className="mx-auto max-w-[1280px] px-5 py-24 md:px-12">
-        <div className="mb-16 flex flex-col items-center text-center">
-          <span className="mb-4 inline-block rounded-full bg-primary-fixed px-3 py-1 text-xs font-semibold text-on-primary-fixed">
+      <section className="mx-auto max-w-[1280px] px-4 py-14 sm:px-5 sm:py-20 md:px-6 md:py-24 lg:px-12">
+        <div className="mb-10 flex flex-col items-center text-center sm:mb-14 md:mb-16">
+          <span className="mb-3 inline-block rounded-full bg-primary-fixed px-3 py-1 text-xs font-semibold text-on-primary-fixed sm:mb-4">
             GET STARTED
           </span>
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-primary">
+          <h2 className="mb-3 text-2xl font-bold tracking-tight text-primary sm:mb-4 sm:text-3xl">
             How It Works
           </h2>
-          <p className="max-w-2xl text-lg text-on-surface-variant">
+          <p className="max-w-2xl text-base text-on-surface-variant sm:text-lg">
             Three simple steps from dream destination to a ready-to-go itinerary.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
           {HOW_IT_WORKS_STEPS.map((step) => (
             <article
               key={step.number}
-              className="rounded-xl border border-outline-variant/30 bg-white p-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]"
+              className="rounded-xl border border-outline-variant/30 bg-white p-5 shadow-[0_4px_24px_rgba(15,23,42,0.06)] sm:p-8"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-3xl font-bold text-[#1E3A8A]">
+              <div className="mb-3 flex items-center justify-between sm:mb-4">
+                <span className="text-2xl font-bold text-[#1E3A8A] sm:text-3xl">
                   {step.number}
                 </span>
-                <span className="text-3xl" aria-hidden="true">
+                <span className="text-2xl sm:text-3xl" aria-hidden="true">
                   {step.icon}
                 </span>
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-primary">
+              <h3 className="mb-2 text-lg font-semibold text-primary sm:text-xl">
                 {step.title}
               </h3>
-              <p className="text-on-surface-variant">{step.description}</p>
+              <p className="text-sm text-on-surface-variant sm:text-base">
+                {step.description}
+              </p>
             </article>
           ))}
         </div>
       </section>
 
       {/* ─── Stats — honest numbers replacing fake testimonials ─── */}
-      <section className="bg-surface py-10 md:py-16">
-        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+      <section className="bg-surface py-8 sm:py-10 md:py-16">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-5 md:px-6">
+          <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
             {STATS.map((stat) => (
               <div key={stat.label} className="text-center">
-                <p className="text-3xl font-bold text-[#F97316] md:text-4xl">
+                <p className="text-2xl font-bold text-[#F97316] sm:text-3xl md:text-4xl">
                   {stat.value}
                 </p>
-                <p className="mt-2 text-sm text-[#64748B] md:text-base">
+                <p className="mt-1.5 text-xs text-[#64748B] sm:mt-2 sm:text-sm md:text-base">
                   {stat.label}
                 </p>
               </div>
             ))}
           </div>
-          <p className="mt-12 text-center text-lg font-medium text-[#1E3A8A]">
+          <p className="mt-8 px-2 text-center text-base font-medium text-[#1E3A8A] sm:mt-12 sm:text-lg">
             Join thousands of travelers planning smarter with AI
           </p>
         </div>

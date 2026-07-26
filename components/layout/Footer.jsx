@@ -11,7 +11,7 @@ const FOOTER_LINKS = [
 export default function Footer() {
   return (
     <footer className="border-t border-[#E2E8F0] bg-white">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-6 py-10 md:flex-row md:items-center md:justify-between">
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <Mountain className="h-5 w-5 text-[#1E3A8A]" aria-hidden="true" />
@@ -22,7 +22,7 @@ export default function Footer() {
           </p>
         </div>
 
-        <nav className="flex flex-wrap gap-6">
+        <nav className="flex flex-wrap gap-x-5 gap-y-3">
           {FOOTER_LINKS.map((link) => (
             <Link
               key={link.label}

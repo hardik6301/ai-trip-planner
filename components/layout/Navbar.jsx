@@ -15,7 +15,7 @@ function NavLink({ href, label, isActive, onClick }) {
     <Link
       href={href}
       onClick={onClick}
-      className={`text-sm font-medium transition-colors ${
+      className={`flex min-h-11 items-center text-sm font-medium transition-colors md:inline md:min-h-0 ${
         isActive
           ? "border-b-2 border-[#F97316] pb-0.5 font-semibold text-[#F97316]"
           : "text-[#64748B] hover:text-[#0F172A]"
@@ -112,13 +112,13 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 z-50 w-full border-b border-[#E2E8F0] bg-white">
-      <nav className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-6">
+      <nav className="mx-auto flex h-[64px] max-w-[1400px] items-center justify-between px-4 sm:h-[72px] sm:px-6">
         <Link
           href="/"
-          className="flex items-center gap-2 text-[#1E3A8A] transition-opacity hover:opacity-80"
+          className="flex min-w-0 items-center gap-2 text-[#1E3A8A] transition-opacity hover:opacity-80"
         >
-          <Mountain className="h-6 w-6 stroke-[2.5]" aria-hidden="true" />
-          <span className="text-xl font-bold tracking-tight text-[#0F172A]">
+          <Mountain className="h-6 w-6 shrink-0 stroke-[2.5]" aria-hidden="true" />
+          <span className="truncate text-lg font-bold tracking-tight text-[#0F172A] sm:text-xl">
             Travora
           </span>
         </Link>
@@ -249,8 +249,8 @@ export default function Navbar() {
       </nav>
 
       {mobileOpen && (
-        <div className="border-t border-[#E2E8F0] bg-white px-6 py-4 md:hidden">
-          <div className="flex flex-col gap-3">
+        <div className="max-h-[calc(100dvh-64px)] overflow-y-auto border-t border-[#E2E8F0] bg-white px-4 py-4 sm:px-6 md:hidden">
+          <div className="flex flex-col gap-1">
             <NavLink
               href="/"
               label="Explore"
@@ -270,29 +270,20 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
             />
             {showLoggedIn && (
-              <>
-                <NavLink
-                  href="/profile"
-                  label="Profile"
-                  isActive={pathname === "/profile"}
-                  onClick={() => setMobileOpen(false)}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileOpen(false);
-                    handleSignOut();
-                  }}
-                  className="cursor-pointer text-left text-sm font-medium text-red-600"
-                >
-                  Sign Out
-                </button>
-              </>
+              <NavLink
+                href="/profile"
+                label="Profile"
+                isActive={pathname === "/profile"}
+                onClick={() => setMobileOpen(false)}
+              />
             )}
+
+            <div className="my-2 border-t border-[#E2E8F0]" />
+
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex cursor-pointer items-center gap-2 text-left text-sm font-medium text-[#64748B]"
+              className="flex min-h-11 cursor-pointer items-center gap-2 text-left text-sm font-medium text-[#64748B]"
             >
               {theme === "dark" ? (
                 <>
@@ -304,6 +295,32 @@ export default function Navbar() {
                 </>
               )}
             </button>
+
+            {showLoggedOut && (
+              <div className="mt-2 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    router.push("/auth/login");
+                  }}
+                  className="min-h-11 cursor-pointer rounded-lg border border-[#E2E8F0] px-4 py-2.5 text-sm font-medium text-[#0F172A]"
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    router.push("/auth/signup");
+                  }}
+                  className="min-h-11 cursor-pointer rounded-lg bg-[#1E3A8A] px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  Start Free
+                </button>
+              </div>
+            )}
+
             {showLoggedIn && !isPro && (
               <button
                 type="button"
@@ -311,9 +328,22 @@ export default function Navbar() {
                   setMobileOpen(false);
                   router.push("/pricing");
                 }}
-                className="mt-2 cursor-pointer rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white"
+                className="mt-2 min-h-11 cursor-pointer rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white"
               >
                 Upgrade to Pro
+              </button>
+            )}
+
+            {showLoggedIn && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  handleSignOut();
+                }}
+                className="mt-1 min-h-11 cursor-pointer text-left text-sm font-medium text-red-600"
+              >
+                Sign Out
               </button>
             )}
           </div>
