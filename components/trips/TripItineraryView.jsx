@@ -8,7 +8,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  Banknote,
   Battery,
   Bookmark,
   Cable,
@@ -57,8 +56,11 @@ import { downloadTripPdf } from "@/utils/downloadTripPdf";
 import { getGoogleMapsLink } from "@/utils/googleMaps";
 import { formatMoney, parseBudgetRange } from "@/utils/expenseBudget";
 import Modal from "@/components/ui/Modal";
+import LiveWeatherCard from "@/components/trips/LiveWeatherCard";
+import LiveCurrencyCard from "@/components/trips/LiveCurrencyCard";
+import OpenNowBadge from "@/components/trips/OpenNowBadge";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
-import { currencySymbol, parseTripVibe } from "@/lib/destinationLive";
+import { parseTripVibe } from "@/lib/destinationLive";
 import { createClient } from "@/lib/supabase/client";
 
 const DEFAULT_HERO =
@@ -515,22 +517,8 @@ export default function TripItineraryView({
   const atRegenerationLimit =
     canRegenerate && !isPro && regenerationsUsed >= FREE_REGENERATIONS_PER_TRIP;
 
-  const weatherTitle = liveLoading
-    ? "…"
-    : liveData?.weather
-      ? `${liveData.weather.tempC}°C`
-      : "—";
-  const weatherSubtitle = liveLoading
-    ? "Loading…"
-    : liveData?.weather?.description || "Unavailable";
-
-  const localCurrency = liveData?.currency?.localCode || "—";
-  const currencySubtitle = liveLoading
-    ? "Loading…"
-    : liveData?.currency?.exchangeLine || "—";
-  const currencyTitle = liveLoading
-    ? "…"
-    : `${localCurrency} (${currencySymbol(localCurrency)})`;
+  const liveTimezone =
+    liveData?.timezone || liveData?.weather?.timezone || "UTC";
 
   useEffect(() => {
     if (!budgetInfoOpen) return;
@@ -968,19 +956,12 @@ export default function TripItineraryView({
 
         {/* ─── Stats row ─── */}
         <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard
-            emoji="⛅"
-            label="Weather"
-            title={weatherTitle}
-            subtitle={weatherSubtitle}
+          <LiveWeatherCard
+            weather={liveData?.weather}
             loading={liveLoading}
           />
-          <StatCard
-            icon={Banknote}
-            iconTone="green"
-            label="Currency"
-            title={currencyTitle}
-            subtitle={currencySubtitle}
+          <LiveCurrencyCard
+            currency={liveData?.currency}
             loading={liveLoading}
           />
           <StatCard
@@ -1308,9 +1289,18 @@ export default function TripItineraryView({
                             <h3 className="mt-2 text-[17px] font-bold leading-snug text-[#0F172A] md:text-lg">
                               {slot.activity}
                             </h3>
-                            <p className="mt-1.5 flex items-start gap-1 text-sm text-[#64748B]">
-                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                              <span className="leading-snug">{slot.place}</span>
+                            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[#64748B]">
+                              <span className="inline-flex min-w-0 items-start gap-1">
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                <span className="leading-snug">{slot.place}</span>
+                              </span>
+                              {slot.place && (
+                                <OpenNowBadge
+                                  place={slot.place}
+                                  destination={tripData.destination}
+                                  timezone={liveTimezone}
+                                />
+                              )}
                             </p>
                             <p className="mt-2 line-clamp-3 text-sm leading-[1.65] text-[#64748B]">
                               {getActivityDescription(slot, period)}
