@@ -40,6 +40,7 @@ import { getPlaceImage, PLACE_IMAGE_FALLBACK } from "@/utils/placeImages";
 import { FREE_REGENERATIONS_PER_TRIP } from "@/constants/tripOptions";
 import { useToast } from "@/components/ui/Toast";
 import ProBadge from "@/components/ui/ProBadge";
+import QuickAddExpense from "@/components/trips/QuickAddExpense";
 import {
   buildTripShareText,
   getTripShareUrl,
@@ -479,7 +480,7 @@ export default function TripItineraryView({
   const [activeDay, setActiveDay] = useState(1);
   const [budgetInfoOpen, setBudgetInfoOpen] = useState(false);
   const budgetInfoRef = useRef(null);
-  // Live logged expenses for Pro owners (Expense Tracker)
+  // Live logged expenses (Expense Tracker — owners Pro / collab editors)
   const [loggedTotal, setLoggedTotal] = useState(null);
   const trackLiveSpend = Boolean(expensesHref && tripId);
   const [expandedDays, setExpandedDays] = useState(() => {
@@ -1073,7 +1074,16 @@ export default function TripItineraryView({
             title={spendCard.title}
             progress={spendCard.percentage}
             progressCaption={spendCard.caption}
-          />
+          >
+            {trackLiveSpend && (
+              <QuickAddExpense
+                tripId={tripId}
+                onAdded={(amt) =>
+                  setLoggedTotal((prev) => Number(prev || 0) + Number(amt || 0))
+                }
+              />
+            )}
+          </StatCard>
         </div>
 
         {regenerateError && (
@@ -1704,6 +1714,7 @@ function StatCard({
   progressCaption,
   tripStats,
   loading = false,
+  children = null,
 }) {
   const iconWrap =
     iconTone === "green"
@@ -1774,6 +1785,8 @@ function StatCard({
       {progress != null && progressCaption && (
         <p className="mt-1.5 text-[10px] text-[#64748B]">{progressCaption}</p>
       )}
+
+      {children}
     </div>
   );
 }

@@ -184,7 +184,7 @@ export default function SavedTripView({ trip, ownerId }) {
         canRegenerate={canEdit}
         aiFlashDays={aiFlashDays}
         aiBadgeDays={aiBadgeDays}
-        expensesHref={isOwner && isPro ? `/trip/${trip.id}/expenses` : null}
+        expensesHref={canEdit && isPro ? `/trip/${trip.id}/expenses` : null}
         heroBadge={heroBadge}
         saveButton={false}
         showEditInvite={isOwner}

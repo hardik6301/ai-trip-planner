@@ -76,6 +76,8 @@ export default function ExpenseTrackerPage() {
   const [pageState, setPageState] = useState("loading");
   const [trip, setTrip] = useState(null);
   const [expenses, setExpenses] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [isTripOwner, setIsTripOwner] = useState(false);
 
   const [category, setCategory] = useState(CATEGORIES[0].value);
   const [amount, setAmount] = useState("");
@@ -103,23 +105,26 @@ export default function ExpenseTrackerPage() {
         return;
       }
 
+      const accessRes = await fetch(`/api/trip/${tripId}`);
+      const accessData = await accessRes.json().catch(() => ({}));
+      if (!accessRes.ok || !accessData.canEdit) {
+        setPageState("not_found");
+        return;
+      }
+
+      const role = accessData.role || "viewer";
+      setIsTripOwner(role === "owner");
+      setCurrentUserId(user.id);
+
       const { isPro, profile } = await fetchUserProStatus(supabase, user.id);
+      // Same gate as AI Assistant: caller's own Pro + trip edit access
       if (!isPro && !isProUser(user, profile)) {
         router.replace("/pricing");
         return;
       }
 
-      const { data: tripRow, error: tripError } = await supabase
-        .from("trips")
-        .select("id, user_id, destination, budget, itinerary, days")
-        .eq("id", tripId)
-        .maybeSingle();
-
-      if (tripError) {
-        setPageState("error");
-        return;
-      }
-      if (!tripRow || tripRow.user_id !== user.id) {
+      const tripRow = accessData.trip;
+      if (!tripRow) {
         setPageState("not_found");
         return;
       }
@@ -321,6 +326,7 @@ export default function ExpenseTrackerPage() {
     const payload = {
       trip_id: tripId,
       user_id: user.id,
+      created_by: user.id,
       category,
       amount: value,
       note: note.trim() || null,
@@ -336,10 +342,12 @@ export default function ExpenseTrackerPage() {
       .select()
       .single();
 
-    // Graceful fallback if migration 013 not applied yet
+    // Graceful fallback if migrations 013/016 not applied yet
     if (
       error &&
-      /day_number|activity_key|activity_label|column/i.test(error.message || "")
+      /day_number|activity_key|activity_label|created_by|column/i.test(
+        error.message || ""
+      )
     ) {
       const legacy = {
         trip_id: tripId,
@@ -784,14 +792,18 @@ export default function ExpenseTrackerPage() {
                             {money(exp.amount)}
                           </p>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(exp.id)}
-                            aria-label="Delete expense"
-                            className="shrink-0 cursor-pointer rounded-lg p-2 text-[#4B5570] transition-colors hover:bg-red-500/10 hover:text-red-400"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {(isTripOwner ||
+                            exp.user_id === currentUserId ||
+                            exp.created_by === currentUserId) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(exp.id)}
+                              aria-label="Delete expense"
+                              className="shrink-0 cursor-pointer rounded-lg p-2 text-[#4B5570] transition-colors hover:bg-red-500/10 hover:text-red-400"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       );
                     })}
