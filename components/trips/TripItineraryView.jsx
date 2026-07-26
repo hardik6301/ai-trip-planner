@@ -51,8 +51,6 @@ import {
   shareTripNative,
 } from "@/utils/shareTrip";
 import { downloadTripPdf } from "@/utils/downloadTripPdf";
-import { downloadTripIcs } from "@/utils/downloadTripIcs";
-import { downloadOfflinePack } from "@/utils/downloadOfflinePack";
 import { getGoogleMapsLink } from "@/utils/googleMaps";
 import Modal from "@/components/ui/Modal";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
@@ -376,8 +374,6 @@ export default function TripItineraryView({
   const [regenerateError, setRegenerateError] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [icsBusy, setIcsBusy] = useState(false);
-  const [offlineBusy, setOfflineBusy] = useState(false);
   // Custom activity builder (Pro)
   const [activityModal, setActivityModal] = useState(null); // { dayNumber }
   const [activityForm, setActivityForm] = useState({
@@ -545,45 +541,6 @@ export default function TripItineraryView({
       );
     } finally {
       setPdfBusy(false);
-    }
-  }
-
-  /** Pro — export activities to Google Calendar (.ics) */
-  function handleCalendarExport() {
-    if (!isPro) {
-      showToast("Calendar export is a Pro feature", "error");
-      return;
-    }
-    if (icsBusy || !tripData?.days?.length) return;
-    setIcsBusy(true);
-    try {
-      downloadTripIcs(tripData);
-      showToast("Calendar file downloaded — open it in Google Calendar", "success");
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Calendar export failed", "error");
-    } finally {
-      setIcsBusy(false);
-    }
-  }
-
-  /** Pro — offline PDF with QR + map links */
-  async function handleOfflinePack() {
-    if (!isPro) {
-      showToast("Offline travel pack is a Pro feature", "error");
-      return;
-    }
-    if (offlineBusy || !tripData?.days?.length) return;
-    setOfflineBusy(true);
-    try {
-      await downloadOfflinePack(tripData, { tripId: activeShareId });
-      showToast("Offline travel pack downloaded!", "success");
-    } catch (err) {
-      showToast(
-        err instanceof Error ? err.message : "Could not build offline pack",
-        "error"
-      );
-    } finally {
-      setOfflineBusy(false);
     }
   }
 
@@ -861,36 +818,14 @@ export default function TripItineraryView({
                 <FileText className={`h-3.5 w-3.5 ${pdfBusy ? "animate-pulse" : ""}`} />
                 {pdfBusy ? "Generating…" : "Download PDF"}
               </button>
-              {isPro && (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCalendarExport}
-                    disabled={icsBusy || !tripData?.days?.length}
-                    className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-2 py-2 text-[11px] font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:opacity-45"
-                  >
-                    <Calendar className={`h-3.5 w-3.5 ${icsBusy ? "animate-pulse" : ""}`} />
-                    {icsBusy ? "…" : "Calendar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOfflinePack}
-                    disabled={offlineBusy || !tripData?.days?.length}
-                    className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-2 py-2 text-[11px] font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:opacity-45"
-                  >
-                    <FileText className={`h-3.5 w-3.5 ${offlineBusy ? "animate-pulse" : ""}`} />
-                    {offlineBusy ? "…" : "Offline Pack"}
-                  </button>
-                </div>
-              )}
               {expensesHref && (
                 <Link
                   href={expensesHref}
                   className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] px-3 py-2 text-xs font-semibold text-[#F97316] transition-colors hover:bg-[#F97316] hover:text-white"
                 >
-                  <Wallet className="h-3.5 w-3.5" />
-                  Expense Tracker
-                  <ProBadge className="ml-1 scale-90" />
+                  <Wallet className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Expense Tracker</span>
+                  <ProBadge className="ml-0.5 shrink-0 scale-90" />
                 </Link>
               )}
             </div>
