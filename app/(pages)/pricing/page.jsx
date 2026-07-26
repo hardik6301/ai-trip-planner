@@ -211,52 +211,52 @@ export default function PricingPage() {
         : "Upgrade to Pro →";
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-[#FAFAF9] pb-20 pt-12">
-      <div className="mx-auto max-w-[960px] px-6">
+    <div className="min-h-[calc(100dvh-64px)] overflow-x-hidden bg-[#FAFAF9] pb-14 pt-8 sm:min-h-[calc(100dvh-72px)] sm:pb-20 sm:pt-12">
+      <div className="mx-auto max-w-[960px] px-4 sm:px-6">
         {/* ─── Header ─── */}
-        <header className="mb-12 text-center">
-          <h1 className="text-[32px] font-bold tracking-tight text-[#1E3A8A] md:text-[36px]">
+        <header className="mb-8 text-center sm:mb-12">
+          <h1 className="text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-[#1E3A8A]">
             Simple, transparent pricing
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#64748B]">
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[#64748B] sm:mt-4 sm:text-base">
             Plan your dream adventures with precision. Choose the plan that best
             fits your travel frequency and planning style.
           </p>
         </header>
 
-        {/* ─── Plan cards ─── */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
+        {/* ─── Plan cards — Pro first on mobile (conversion) ─── */}
+        <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-2 md:gap-8">
           {/* FREE card */}
-          <article className="flex flex-col rounded-2xl border border-[#E2E8F0] bg-white p-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
+          <article className="order-2 flex flex-col rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_4px_24px_rgba(15,23,42,0.06)] sm:p-8 md:order-1">
             <p className="text-sm font-bold tracking-wide text-[#1E3A8A] uppercase">
               Free
             </p>
             <div className="mt-3 flex items-baseline gap-1">
-              <span className="text-[40px] font-bold leading-none text-[#0F172A]">
+              <span className="text-[36px] font-bold leading-none text-[#0F172A] sm:text-[40px]">
                 ₹0
               </span>
               <span className="text-sm text-[#64748B]">forever</span>
             </div>
 
-            <ul className="mt-8 flex-1 space-y-3.5">
+            <ul className="mt-6 flex-1 space-y-3 sm:mt-8 sm:space-y-3.5">
               {FREE_FEATURES.map((label) => (
                 <li
                   key={label}
-                  className="flex items-center gap-3 text-sm text-[#0F172A]"
+                  className="flex items-start gap-3 text-sm leading-snug text-[#0F172A]"
                 >
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-[#1E3A8A]" />
-                  {label}
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#1E3A8A]" />
+                  <span>{label}</span>
                 </li>
               ))}
             </ul>
 
             {/* Free CTA — depends on auth + plan */}
             {!mounted ? (
-              <div className="mt-8 h-[50px] animate-pulse rounded-xl bg-[#F1F5F9]" />
+              <div className="mt-6 h-12 animate-pulse rounded-xl bg-[#F1F5F9] sm:mt-8" />
             ) : !user ? (
               <Link
                 href="/auth/signup"
-                className="mt-8 flex w-full items-center justify-center rounded-xl border-2 border-[#1E3A8A] py-3.5 text-sm font-semibold text-[#1E3A8A] transition-colors hover:bg-[#EFF6FF]"
+                className="mt-6 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-[#1E3A8A] py-3.5 text-sm font-semibold text-[#1E3A8A] transition-colors hover:bg-[#EFF6FF] sm:mt-8"
               >
                 Get Started Free
               </Link>
@@ -264,7 +264,7 @@ export default function PricingPage() {
               <button
                 type="button"
                 disabled
-                className="mt-8 w-full cursor-default rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] py-3.5 text-sm font-semibold text-[#64748B]"
+                className="mt-6 min-h-12 w-full cursor-default rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] py-3.5 text-sm font-semibold text-[#64748B] sm:mt-8"
               >
                 Current Plan
               </button>
@@ -272,7 +272,7 @@ export default function PricingPage() {
               <button
                 type="button"
                 disabled
-                className="mt-8 w-full cursor-default rounded-xl border-2 border-[#E2E8F0] py-3.5 text-sm font-semibold text-[#64748B]"
+                className="mt-6 min-h-12 w-full cursor-default rounded-xl border-2 border-[#E2E8F0] py-3.5 text-sm font-semibold text-[#64748B] sm:mt-8"
               >
                 Included with Pro
               </button>
@@ -280,8 +280,8 @@ export default function PricingPage() {
           </article>
 
           {/* PRO card */}
-          <article className="relative flex flex-col rounded-2xl border-2 border-[#F97316] bg-white p-8 shadow-[0_8px_32px_rgba(249,115,22,0.15)]">
-            <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#F97316] px-4 py-1 text-xs font-semibold text-white">
+          <article className="relative order-1 mt-2 flex flex-col rounded-2xl border-2 border-[#F97316] bg-white p-5 shadow-[0_8px_32px_rgba(249,115,22,0.15)] sm:mt-0 sm:p-8 md:order-2">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#F97316] px-3.5 py-1 text-[11px] font-semibold text-white sm:-top-3.5 sm:px-4 sm:text-xs">
               Most Popular
             </span>
 
@@ -289,39 +289,39 @@ export default function PricingPage() {
               Pro
             </p>
             <div className="mt-3 flex items-baseline gap-1">
-              <span className="text-[40px] font-bold leading-none text-[#0F172A]">
+              <span className="text-[36px] font-bold leading-none text-[#0F172A] sm:text-[40px]">
                 ₹199
               </span>
               <span className="text-sm text-[#64748B]">one-time</span>
             </div>
-            <p className="mt-2 text-xs text-[#94A3B8]">
+            <p className="mt-2 text-xs leading-relaxed text-[#94A3B8]">
               Pay once, unlock Pro features. Cancel anytime from Profile.
             </p>
 
-            <p className="mt-6 text-sm font-medium text-[#64748B]">
+            <p className="mt-5 text-sm font-medium text-[#64748B] sm:mt-6">
               Everything in free, plus:
             </p>
-            <ul className="mt-4 flex-1 space-y-3.5">
+            <ul className="mt-3 flex-1 space-y-3 sm:mt-4 sm:space-y-3.5">
               {PRO_FEATURES.map((label) => (
                 <li
                   key={label}
-                  className="flex items-center gap-3 text-sm text-[#0F172A]"
+                  className="flex items-start gap-3 text-sm leading-snug text-[#0F172A]"
                 >
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-[#F97316]" />
-                  {label}
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#F97316]" />
+                  <span>{label}</span>
                 </li>
               ))}
             </ul>
 
             {/* Pro CTA — current plan or upgrade */}
             {!mounted ? (
-              <div className="mt-8 h-[50px] animate-pulse rounded-xl bg-[#F1F5F9]" />
+              <div className="mt-6 h-12 animate-pulse rounded-xl bg-[#F1F5F9] sm:mt-8" />
             ) : isPro ? (
-              <div className="mt-8 space-y-2">
+              <div className="mt-6 space-y-2 sm:mt-8">
                 <button
                   type="button"
                   disabled
-                  className="w-full cursor-default rounded-xl bg-emerald-600 py-3.5 text-sm font-semibold text-white"
+                  className="min-h-12 w-full cursor-default rounded-xl bg-emerald-600 py-3.5 text-sm font-semibold text-white"
                 >
                   Current Plan ✓
                 </button>
@@ -340,7 +340,7 @@ export default function PricingPage() {
                 type="button"
                 onClick={handleUpgrade}
                 disabled={upgradeState !== "idle"}
-                className="mt-8 w-full cursor-pointer rounded-xl bg-[#F97316] py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-70"
+                className="mt-6 min-h-12 w-full cursor-pointer rounded-xl bg-[#F97316] py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-70 sm:mt-8"
               >
                 {upgradeLabel}
               </button>
@@ -349,8 +349,8 @@ export default function PricingPage() {
         </div>
 
         {/* ─── FAQ accordion ─── */}
-        <section className="mt-20">
-          <h2 className="mb-8 text-center text-xl font-bold text-[#1E3A8A]">
+        <section className="mt-14 sm:mt-20">
+          <h2 className="mb-5 text-center text-lg font-bold text-[#1E3A8A] sm:mb-8 sm:text-xl">
             Frequently Asked Questions
           </h2>
           <div className="divide-y divide-[#E2E8F0] border-y border-[#E2E8F0]">
@@ -361,7 +361,7 @@ export default function PricingPage() {
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? null : index)}
-                    className="flex w-full cursor-pointer items-center justify-between gap-4 py-5 text-left"
+                    className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 py-4 text-left sm:gap-4 sm:py-5"
                     aria-expanded={isOpen}
                   >
                     <span className="text-sm font-medium text-[#0F172A] md:text-base">
@@ -374,7 +374,7 @@ export default function PricingPage() {
                     />
                   </button>
                   {isOpen && (
-                    <p className="pb-5 text-sm leading-relaxed text-[#64748B]">
+                    <p className="pb-4 text-sm leading-relaxed text-[#64748B] sm:pb-5">
                       {item.answer}
                     </p>
                   )}

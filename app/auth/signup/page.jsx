@@ -12,7 +12,7 @@ import Button from "@/components/ui/Button";
 
 // Shared input styling matching the Travora trip form
 const inputClassName =
-  "w-full rounded-lg border-2 border-transparent bg-surface-container-low p-3 text-on-surface outline-none transition-all focus:border-primary focus:bg-white";
+  "w-full rounded-lg border-2 border-transparent bg-surface-container-low px-3 py-3 text-base text-on-surface outline-none transition-all focus:border-primary focus:bg-white sm:text-sm";
 
 export default function SignupPage() {
   // Registration form fields
@@ -58,18 +58,18 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-surface px-5 py-12 font-sans">
+    <div className="flex min-h-[calc(100dvh-64px)] flex-col items-center justify-center bg-surface px-4 py-8 font-sans sm:min-h-[calc(100dvh-72px)] sm:px-5 sm:py-12">
       {/* Auth card — centered signup form */}
-      <div className="w-full max-w-md rounded-xl border border-outline-variant/30 bg-white p-8 shadow-2xl">
+      <div className="w-full max-w-md rounded-xl border border-outline-variant/30 bg-white p-5 shadow-2xl sm:p-8">
         {/* Page heading */}
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center sm:mb-8">
           <Link
             href="/"
-            className="text-2xl font-semibold tracking-tight text-primary"
+            className="text-xl font-semibold tracking-tight text-primary sm:text-2xl"
           >
             Travora
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-on-surface">
+          <h1 className="mt-3 text-xl font-bold text-on-surface sm:mt-4 sm:text-2xl">
             Create your account
           </h1>
           <p className="mt-2 text-sm text-on-surface-variant">
