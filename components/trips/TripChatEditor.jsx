@@ -230,7 +230,7 @@ export default function TripChatEditor({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "Close AI chat" : "Open AI chat editor"}
-        className="fixed right-5 bottom-5 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-[#F97316] to-[#ea580c] text-white shadow-[0_8px_24px_rgba(249,115,22,0.4)] transition-transform hover:scale-105"
+        className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-[#F97316] to-[#ea580c] text-white shadow-[0_8px_24px_rgba(249,115,22,0.4)] transition-transform hover:scale-105 sm:right-5 sm:bottom-5 sm:h-14 sm:w-14"
       >
         {!open && (
           <>
@@ -255,7 +255,7 @@ export default function TripChatEditor({
       </button>
 
       {open && (
-        <div className="fixed right-5 bottom-24 z-50 flex max-h-[min(600px,calc(100vh-130px))] w-[min(400px,calc(100vw-40px))] flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_24px_64px_rgba(15,23,42,0.25)]">
+        <div className="fixed inset-x-3 bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] z-50 flex max-h-[min(600px,calc(100dvh-7.5rem))] w-auto flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_24px_64px_rgba(15,23,42,0.25)] sm:inset-x-auto sm:right-5 sm:bottom-24 sm:w-[min(400px,calc(100vw-40px))]">
           <div className="flex items-center justify-between bg-[#0F1B4D] px-4 py-3.5">
             <h3 className="flex items-center gap-2 text-base font-bold text-white">
               <Bot className="h-5 w-5" />

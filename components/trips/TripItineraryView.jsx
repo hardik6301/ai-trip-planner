@@ -881,175 +881,181 @@ export default function TripItineraryView({
     }
   }
 
-  return (
-    <div className="bg-[#F8FAFC] pb-16">
-      <div className="mx-auto max-w-[1400px] px-6 pt-6">
-        {/* ─── Hero ─── */}
-        <section className="relative h-[400px] overflow-hidden rounded-[20px] shadow-soft md:h-[420px]">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-[background-image] duration-500"
-            style={{ backgroundImage: `url('${heroImage}')` }}
-            role="img"
-            aria-label={destination}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
+  const budgetActions = (
+    <>
+      <div ref={budgetInfoRef} className="relative flex items-center gap-1">
+        <p className="text-[10px] font-semibold tracking-[0.1em] text-[#64748B] uppercase">
+          Estimated Budget
+        </p>
+        <button
+          type="button"
+          onClick={() => setBudgetInfoOpen((o) => !o)}
+          className="cursor-pointer rounded-full p-0.5 text-[#94A3B8] transition-colors hover:bg-[#F1F5F9] hover:text-[#64748B]"
+          aria-label="Budget estimate details"
+          aria-expanded={budgetInfoOpen}
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+        {budgetInfoOpen && (
+          <div className="absolute top-full left-0 z-20 mt-2 w-[min(248px,calc(100vw-3rem))] rounded-xl border border-[#E2E8F0]/80 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.12)] sm:left-auto sm:right-0">
+            <p className="mb-2 text-xs font-semibold text-[#0F172A]">
+              About this estimate
+            </p>
+            <ul className="space-y-2">
+              {BUDGET_INFO_ITEMS.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 text-[11px] leading-snug text-[#64748B]"
+                >
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#F97316]" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      <p className="mt-1 text-xl font-bold leading-tight tracking-tight text-[#0F172A] sm:text-2xl">
+        {budgetDisplay.mainAmount}
+      </p>
+      {budgetDisplay.rangeLine && (
+        <p className="mt-0.5 text-xs font-medium text-[#64748B]">
+          Range: {budgetDisplay.rangeLine}
+        </p>
+      )}
+      <p className="mt-1 text-[11px] leading-snug text-[#64748B]">
+        {budgetDisplay.subtitle}
+      </p>
+      <div className="mt-4 space-y-2">
+        {saveButton ?? (
+          <button
+            type="button"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
+          >
+            <Bookmark className="h-4 w-4" />
+            Save to My Trips
+          </button>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={!canShare || shareBusy}
+            title={
+              canShare
+                ? "Copy or share your saved trip link"
+                : "Save this trip first to get a shareable link"
+            }
+            className="flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            {shareBusy ? "Sharing…" : "Share"}
+          </button>
+          <button
+            type="button"
+            onClick={handleWhatsAppDigest}
+            disabled={!tripData?.days?.length}
+            title="Send a formatted day itinerary via WhatsApp"
+            className="flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 px-3 py-2 text-xs font-medium text-[#128C7E] transition-colors hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <WhatsAppIcon className="h-3.5 w-3.5" />
+            WhatsApp
+          </button>
+        </div>
+        {!canShare && (
+          <p className="text-center text-[10px] leading-snug text-[#94A3B8]">
+            Save trip to unlock Share link · WhatsApp works now
+          </p>
+        )}
+        {showEditInvite && tripId && (
+          <EditInviteControls tripId={tripId} />
+        )}
+        <button
+          type="button"
+          onClick={handlePdfDownload}
+          disabled={pdfBusy || !tripData?.days?.length}
+          className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          <FileText className={`h-3.5 w-3.5 ${pdfBusy ? "animate-pulse" : ""}`} />
+          {pdfBusy ? "Generating…" : "Download PDF"}
+        </button>
+        {expensesHref && (
+          <Link
+            href={expensesHref}
+            className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] px-3 py-2 text-xs font-semibold text-[#F97316] transition-colors hover:bg-[#F97316] hover:text-white"
+          >
+            <Wallet className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Expense Tracker</span>
+            <ProBadge className="ml-0.5 shrink-0 scale-90" />
+          </Link>
+        )}
+      </div>
+    </>
+  );
 
-          {/* Budget card — top right */}
-          <div className="absolute top-6 right-6 w-[272px] rounded-[22px] bg-white p-5 shadow-[0_8px_32px_rgba(15,23,42,0.14)]">
+  return (
+    <div className="overflow-x-hidden bg-[#F8FAFC] pb-20 sm:pb-16">
+      <div className="mx-auto max-w-[1400px] px-4 pt-4 sm:px-6 sm:pt-6">
+        {/* ─── Hero: image + title; budget overlays on lg, stacks below on smaller ─── */}
+        <section className="relative">
+          <div className="relative h-[260px] overflow-hidden rounded-[16px] shadow-soft sm:h-[340px] sm:rounded-[20px] lg:h-[420px]">
             <div
-              ref={budgetInfoRef}
-              className="relative flex items-center gap-1"
-            >
-              <p className="text-[10px] font-semibold tracking-[0.1em] text-[#64748B] uppercase">
-                Estimated Budget
-              </p>
-              <button
-                type="button"
-                onClick={() => setBudgetInfoOpen((o) => !o)}
-                className="cursor-pointer rounded-full p-0.5 text-[#94A3B8] transition-colors hover:bg-[#F1F5F9] hover:text-[#64748B]"
-                aria-label="Budget estimate details"
-                aria-expanded={budgetInfoOpen}
-              >
-                <Info className="h-3.5 w-3.5" />
-              </button>
-              {budgetInfoOpen && (
-                <div className="absolute top-full right-0 z-20 mt-2 w-[248px] rounded-xl border border-[#E2E8F0]/80 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.12)]">
-                  <p className="mb-2 text-xs font-semibold text-[#0F172A]">
-                    About this estimate
-                  </p>
-                  <ul className="space-y-2">
-                    {BUDGET_INFO_ITEMS.map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-2 text-[11px] leading-snug text-[#64748B]"
-                      >
-                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#F97316]" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-            <p className="mt-1 text-2xl font-bold leading-tight tracking-tight text-[#0F172A]">
-              {budgetDisplay.mainAmount}
-            </p>
-            {budgetDisplay.rangeLine && (
-              <p className="mt-0.5 text-xs font-medium text-[#64748B]">
-                Range: {budgetDisplay.rangeLine}
-              </p>
-            )}
-            <p className="mt-1 text-[11px] leading-snug text-[#64748B]">
-              {budgetDisplay.subtitle}
-            </p>
-            <div className="mt-4 space-y-2">
-              {saveButton ?? (
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
-                >
-                  <Bookmark className="h-4 w-4" />
-                  Save to My Trips
-                </button>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  disabled={!canShare || shareBusy}
-                  title={
-                    canShare
-                      ? "Copy or share your saved trip link"
-                      : "Save this trip first to get a shareable link"
-                  }
-                  className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  <Share2 className="h-3.5 w-3.5" />
-                  {shareBusy ? "Sharing…" : "Share"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleWhatsAppDigest}
-                  disabled={!tripData?.days?.length}
-                  title="Send a formatted day itinerary via WhatsApp"
-                  className="flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 px-3 py-2 text-xs font-medium text-[#128C7E] transition-colors hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  <WhatsAppIcon className="h-3.5 w-3.5" />
-                  WhatsApp
-                </button>
+              className="absolute inset-0 bg-cover bg-center transition-[background-image] duration-500"
+              style={{ backgroundImage: `url('${heroImage}')` }}
+              role="img"
+              aria-label={destination}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
+
+            {/* Title block */}
+            <div className="absolute inset-x-4 bottom-4 text-white sm:inset-x-6 sm:bottom-6 lg:right-[300px] lg:left-6 lg:bottom-8">
+              <div className="mb-2 flex flex-wrap gap-1.5 sm:mb-3 sm:gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-2.5 py-1 text-[11px] font-medium backdrop-blur-md sm:px-3 sm:py-1.5 sm:text-xs">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{heroBadge}</span>
+                </span>
+                {canRegenerate && (
+                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-2.5 py-1 text-[11px] font-medium backdrop-blur-md sm:px-3 sm:py-1.5 sm:text-xs">
+                    <Zap className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">
+                      {isPro
+                        ? "Pro · Unlimited regenerations"
+                        : `${regenerationsUsed}/${FREE_REGENERATIONS_PER_TRIP} regenerations`}
+                    </span>
+                  </span>
+                )}
               </div>
-              {!canShare && (
-                <p className="text-center text-[10px] leading-snug text-[#94A3B8]">
-                  Save trip to unlock Share link · WhatsApp works now
-                </p>
-              )}
-              {showEditInvite && tripId && (
-                <EditInviteControls tripId={tripId} />
-              )}
-              <button
-                type="button"
-                onClick={handlePdfDownload}
-                disabled={pdfBusy || !tripData?.days?.length}
-                className="flex min-h-[40px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                <FileText className={`h-3.5 w-3.5 ${pdfBusy ? "animate-pulse" : ""}`} />
-                {pdfBusy ? "Generating…" : "Download PDF"}
-              </button>
-              {expensesHref && (
-                <Link
-                  href={expensesHref}
-                  className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] px-3 py-2 text-xs font-semibold text-[#F97316] transition-colors hover:bg-[#F97316] hover:text-white"
-                >
-                  <Wallet className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">Expense Tracker</span>
-                  <ProBadge className="ml-0.5 shrink-0 scale-90" />
-                </Link>
-              )}
+              <h1 className="text-[clamp(1.5rem,5vw,2.5rem)] font-bold leading-tight tracking-tight drop-shadow-sm">
+                {title}
+              </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-white/95 sm:mt-3 sm:gap-x-4 sm:gap-y-2 sm:text-sm">
+                {tripData.bestTimeToVisit && (
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" />
+                    <span className="line-clamp-1">{tripData.bestTimeToVisit}</span>
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  <Wallet className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" />
+                  Est. {budgetDisplay.heroShort}
+                </span>
+                <span>{dayCount} Days</span>
+                <span className="text-white/40">·</span>
+                <span>{activityCount} Activities</span>
+                <span className="hidden text-white/40 sm:inline">·</span>
+                <span className="hidden sm:inline">{placeCount} Destinations</span>
+              </div>
             </div>
           </div>
 
-          {/* Title block — bottom left, clear of budget card */}
-          <div className="absolute right-[300px] bottom-8 left-6 text-white">
-            <div className="mb-3 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-xs font-medium backdrop-blur-md">
-                <Sparkles className="h-3.5 w-3.5" />
-                {heroBadge}
-              </span>
-              {canRegenerate && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-xs font-medium backdrop-blur-md">
-                  <Zap className="h-3.5 w-3.5" />
-                  {isPro
-                    ? "Pro · Unlimited regenerations"
-                    : `${regenerationsUsed} / ${FREE_REGENERATIONS_PER_TRIP} Regenerations Used`}
-                </span>
-              )}
-            </div>
-            <h1 className="text-[32px] font-bold leading-tight tracking-tight drop-shadow-sm md:text-[40px]">
-              {title}
-            </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/95">
-              {tripData.bestTimeToVisit && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 shrink-0 opacity-90" />
-                  {tripData.bestTimeToVisit}
-                </span>
-              )}
-              <span className="flex items-center gap-1.5">
-                <Wallet className="h-4 w-4 shrink-0 opacity-90" />
-                Est. {budgetDisplay.heroShort}
-              </span>
-              <span className="hidden text-white/40 sm:inline">·</span>
-              <span>{dayCount} Days</span>
-              <span className="text-white/40">·</span>
-              <span>{activityCount} Activities</span>
-              <span className="text-white/40">·</span>
-              <span>{placeCount} Destinations</span>
-            </div>
+          {/* Single budget panel: below hero on mobile, overlay on lg+ */}
+          <div className="relative z-10 mt-4 rounded-[16px] border border-[#E2E8F0]/60 bg-white p-4 shadow-[0_8px_32px_rgba(15,23,42,0.14)] sm:rounded-[20px] sm:p-5 lg:absolute lg:top-6 lg:right-6 lg:mt-0 lg:w-[272px] lg:rounded-[22px] lg:border-0 lg:p-5">
+            {budgetActions}
           </div>
         </section>
 
         {/* ─── Stats row ─── */}
-        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:mt-6 sm:gap-4 md:grid-cols-4">
           <LiveWeatherCard
             weather={liveData?.weather}
             loading={liveLoading}
@@ -1101,8 +1107,8 @@ export default function TripItineraryView({
 
         {/* ─── Packing essentials ─── */}
         {tripData.packingEssentials?.length > 0 && (
-          <div className="mt-8">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="mt-6 sm:mt-8">
+            <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
               <h2 className="text-base font-bold text-[#0F172A]">
                 Packing Essentials
               </h2>
@@ -1131,16 +1137,16 @@ export default function TripItineraryView({
         )}
 
         {/* ─── Two-column main ─── */}
-        <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:gap-8">
+        <div className="mt-6 flex flex-col gap-5 sm:mt-8 sm:gap-6 lg:flex-row lg:gap-8">
           {/* LEFT sidebar */}
-          <aside className="lg:w-[300px] lg:shrink-0">
-            <div className="space-y-5 lg:sticky lg:top-[96px]">
-              {/* Jump To */}
-              <div className="rounded-[16px] bg-white p-5 shadow-soft">
+          <aside className="min-w-0 lg:w-[300px] lg:shrink-0">
+            <div className="space-y-4 sm:space-y-5 lg:sticky lg:top-[88px]">
+              {/* Jump To — horizontal chips on mobile, list on lg */}
+              <div className="rounded-[16px] bg-white p-4 shadow-soft sm:p-5">
                 <h3 className="mb-3 text-sm font-bold text-[#0F172A]">
                   Jump To
                 </h3>
-                <nav className="day-scroller max-h-[260px] space-y-1 overflow-y-auto">
+                <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:mx-0 lg:max-h-[260px] lg:flex-col lg:gap-1 lg:overflow-y-auto lg:overflow-x-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden">
                   {tripData.days?.map((day) => {
                     const isActive = activeDay === day.day;
                     return (
@@ -1148,16 +1154,24 @@ export default function TripItineraryView({
                         key={day.day}
                         type="button"
                         onClick={() => scrollToDay(day.day)}
-                        className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                        className={`flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-left text-sm transition-colors lg:w-full lg:rounded-lg lg:gap-3 lg:py-2.5 ${
                           isActive
-                            ? "border-l-[3px] border-[#1E3A8A] bg-[#EFF6FF] font-medium text-[#1E3A8A]"
-                            : "text-[#64748B] hover:bg-[#F8FAFC]"
+                            ? "bg-[#1E3A8A] font-medium text-white lg:border-l-[3px] lg:border-[#1E3A8A] lg:bg-[#EFF6FF] lg:text-[#1E3A8A]"
+                            : "bg-[#F8FAFC] text-[#64748B] hover:bg-[#EFF6FF] lg:bg-transparent"
                         }`}
                       >
-                        <span className="font-semibold text-[#64748B]">
+                        <span
+                          className={`font-semibold ${
+                            isActive
+                              ? "text-white lg:text-[#64748B]"
+                              : "text-[#64748B]"
+                          }`}
+                        >
                           {String(day.day).padStart(2, "0")}
                         </span>
-                        <span className="truncate">{day.theme}</span>
+                        <span className="max-w-[140px] truncate lg:max-w-none">
+                          {day.theme}
+                        </span>
                       </button>
                     );
                   })}
@@ -1165,9 +1179,9 @@ export default function TripItineraryView({
               </div>
 
               {/* AI Assistant Pro — opens the floating chat */}
-              <div className="relative overflow-hidden rounded-[16px] bg-[#1E3A8A] p-5 text-white shadow-soft">
-                <ProBadge className="absolute top-4 right-4" />
-                <h3 className="flex items-center gap-2 text-sm font-bold">
+              <div className="relative overflow-hidden rounded-[16px] bg-[#1E3A8A] p-4 text-white shadow-soft sm:p-5">
+                <ProBadge className="absolute top-3 right-3 sm:top-4 sm:right-4" />
+                <h3 className="flex items-center gap-2 pr-14 text-sm font-bold">
                   <Sparkles className="h-4 w-4" />
                   AI Assistant
                 </h3>
@@ -1262,7 +1276,7 @@ export default function TripItineraryView({
                     type="button"
                     id={`day-${day.day}`}
                     onClick={() => toggleDay(day.day)}
-                    className={`scroll-mt-28 relative mb-3 flex w-full cursor-pointer items-center gap-4 rounded-xl bg-[#F1F5F9] px-4 py-4 text-left transition-shadow duration-700 hover:bg-[#E2E8F0] md:px-5 ${isAiFlash ? "ai-day-flash" : ""}`}
+                    className={`scroll-mt-24 relative mb-3 flex w-full cursor-pointer items-center gap-3 rounded-xl bg-[#F1F5F9] px-3 py-3.5 text-left transition-shadow duration-700 hover:bg-[#E2E8F0] sm:gap-4 sm:px-4 sm:py-4 md:px-5 ${isAiFlash ? "ai-day-flash" : ""}`}
                   >
                     {aiBadge}
                     <div
@@ -1302,41 +1316,41 @@ export default function TripItineraryView({
                 <article
                   key={day.day}
                   id={`day-${day.day}`}
-                  className={`relative mb-12 scroll-mt-28 rounded-xl transition-shadow duration-700 ${isAiFlash ? "ai-day-flash" : ""}`}
+                  className={`relative mb-8 scroll-mt-24 rounded-xl transition-shadow duration-700 sm:mb-12 sm:scroll-mt-28 ${isAiFlash ? "ai-day-flash" : ""}`}
                 >
                   {aiBadge}
                   <div
-                    className="itinerary-timeline-rail pointer-events-none absolute top-[44px] bottom-8 left-[21px]"
+                    className="itinerary-timeline-rail pointer-events-none absolute top-[44px] bottom-8 left-[21px] hidden sm:block"
                     aria-hidden="true"
                   />
 
                   {/* Day header */}
-                  <div className="relative flex gap-5">
-                    <div className="relative z-10 flex w-11 shrink-0 justify-center">
+                  <div className="relative flex gap-3 sm:gap-5">
+                    <div className="relative z-10 hidden w-11 shrink-0 justify-center sm:flex">
                       <div className="timeline-day-node">
                         <DayIcon className="h-5 w-5" />
                       </div>
                     </div>
-                    <div className="mb-6 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div className="mb-4 flex min-w-0 flex-1 flex-col gap-2 sm:mb-6 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
                         <p className="itinerary-day-label">
                           {formatDayLabel(day.day)}
                         </p>
-                        <h2 className="text-[22px] font-bold leading-tight text-[#0F172A] md:text-[26px]">
+                        <h2 className="text-lg font-bold leading-tight text-[#0F172A] sm:text-[22px] md:text-[26px]">
                           {day.theme}
                         </h2>
                         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-[#64748B]">
                           {getDaySummary(day, destination)}
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-start gap-4">
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
-                          <span className="flex items-center gap-1.5 text-sm text-[#64748B]">
+                      <div className="flex shrink-0 items-start gap-3 sm:gap-4">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 sm:gap-x-4">
+                          <span className="flex items-center gap-1.5 text-xs text-[#64748B] sm:text-sm">
                             <Calendar className="h-4 w-4" />
                             {slots.length} Activities
                           </span>
                           {dayCostTotal && (
-                            <span className="flex items-center gap-1.5 text-sm text-[#64748B]">
+                            <span className="flex items-center gap-1.5 text-xs text-[#64748B] sm:text-sm">
                               <Wallet className="h-4 w-4" />
                               Est. {dayCostTotal}
                             </span>
@@ -1345,7 +1359,7 @@ export default function TripItineraryView({
                         <button
                           type="button"
                           onClick={() => toggleDay(day.day)}
-                          className="hidden cursor-pointer text-[#64748B] hover:text-[#0F172A] md:block"
+                          className="cursor-pointer rounded-lg p-1 text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A] md:block"
                           aria-label="Collapse day"
                         >
                           <ChevronUp className="h-5 w-5" />
@@ -1368,8 +1382,8 @@ export default function TripItineraryView({
                     );
 
                     return (
-                      <div key={period.key} className="relative flex gap-5">
-                        <div className="relative z-10 flex w-11 shrink-0 justify-center pt-7">
+                      <div key={period.key} className="relative flex gap-3 sm:gap-5">
+                        <div className="relative z-10 hidden w-11 shrink-0 justify-center pt-7 sm:flex">
                           {period.key === "morning" && (
                             <div className="timeline-dot" />
                           )}
@@ -1385,7 +1399,7 @@ export default function TripItineraryView({
                           )}
                         </div>
 
-                        <div className="mb-4 flex min-w-0 flex-1 flex-col gap-0 rounded-[16px] border border-[#E2E8F0] bg-white p-5 shadow-soft sm:flex-row sm:gap-5 md:mb-5">
+                        <div className="mb-3 flex min-w-0 flex-1 flex-col gap-0 rounded-[16px] border border-[#E2E8F0] bg-white p-3.5 shadow-soft sm:mb-4 sm:flex-row sm:gap-5 sm:p-5 md:mb-5">
                           <ActivityImage
                             place={slot.place}
                             activity={slot.activity}
@@ -1450,8 +1464,8 @@ export default function TripItineraryView({
                     );
                   })}
 
-                  <div className="flex gap-5">
-                    <div className="w-11 shrink-0" aria-hidden="true" />
+                  <div className="flex gap-3 sm:gap-5">
+                    <div className="hidden w-11 shrink-0 sm:block" aria-hidden="true" />
                     <div className="flex flex-1 flex-col items-center gap-2 pb-2">
                       {isPro && (
                         <button
@@ -1722,7 +1736,7 @@ function StatCard({
       : "bg-blue-50 text-blue-600";
 
   return (
-    <div className="rounded-xl border border-[#E2E8F0]/50 bg-white px-4 py-4 shadow-soft transition-shadow duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)]">
+    <div className="rounded-xl border border-[#E2E8F0]/50 bg-white px-3 py-3 shadow-soft transition-shadow duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)] sm:px-4 sm:py-4">
       {/* Header: icon + label on one line */}
       <div className="flex items-center gap-2">
         {emoji ? (
@@ -1742,7 +1756,7 @@ function StatCard({
       </div>
 
       {tripStats ? (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-[#0F172A]">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-[#0F172A] sm:gap-x-3 sm:text-xs">
           <span>{tripStats.days} Days</span>
           <span>{tripStats.activities} Activities</span>
           <span>{tripStats.places} Places</span>

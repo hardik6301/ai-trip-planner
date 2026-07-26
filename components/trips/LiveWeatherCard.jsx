@@ -32,7 +32,7 @@ export default function LiveWeatherCard({ weather, loading }) {
   if (weather?.place) meta.push(weather.place);
 
   return (
-    <div className="rounded-xl border border-[#E2E8F0]/50 bg-white px-4 py-4 shadow-soft transition-shadow duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)]">
+    <div className="rounded-xl border border-[#E2E8F0]/50 bg-white px-3 py-3 shadow-soft transition-shadow duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)] sm:px-4 sm:py-4">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
           <CloudSun className="h-4 w-4" strokeWidth={2} />

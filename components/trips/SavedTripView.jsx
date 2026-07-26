@@ -163,12 +163,12 @@ export default function SavedTripView({ trip, ownerId }) {
   return (
     <>
       {conflictBanner && (
-        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-center text-sm text-amber-900">
-          {conflictBanner}{" "}
+        <div className="border-b border-amber-200 bg-amber-50 px-3 py-2.5 text-center text-xs text-amber-900 sm:px-4 sm:text-sm">
+          <span className="block sm:inline">{conflictBanner}</span>{" "}
           <button
             type="button"
             onClick={() => setConflictBanner("")}
-            className="ml-2 font-semibold underline"
+            className="mt-1 font-semibold underline sm:ml-2 sm:mt-0"
           >
             Dismiss
           </button>
