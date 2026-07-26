@@ -236,18 +236,18 @@ export default function MyTripsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-16">
-      <div className="mx-auto max-w-[1400px] px-6 pt-8">
+    <div className="min-h-screen overflow-x-hidden bg-[#F8FAFC] pb-12 sm:pb-16">
+      <div className="mx-auto max-w-[1400px] px-4 pt-6 sm:px-6 sm:pt-8">
         {/* ─── Trip limit banner (free users at 5 trips) ─── */}
         {showLimitBanner && (
-          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-[#9A3412]">
+          <div className="mb-5 flex flex-col gap-3 rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-4 py-3.5 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+            <p className="text-sm leading-relaxed text-[#9A3412]">
               You&apos;ve reached your free limit of {FREE_TRIP_LIMIT} trips.
               Upgrade to Pro for unlimited trips.
             </p>
             <Link
               href="/pricing"
-              className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#F97316] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
+              className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] sm:w-auto sm:min-h-0 sm:py-2"
             >
               Upgrade to Pro
             </Link>
@@ -255,26 +255,26 @@ export default function MyTripsPage() {
         )}
 
         {/* ─── Page header ─── */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-[#0F172A] md:text-4xl">
+        <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-[#0F172A] sm:text-3xl md:text-4xl">
               My Trips
             </h1>
-            <p className="mt-2 text-[#64748B]">
+            <p className="mt-1.5 text-sm text-[#64748B] sm:mt-2 sm:text-base">
               Manage your AI-crafted adventures
             </p>
           </div>
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#ea580c]"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#ea580c] sm:w-auto sm:min-h-0"
           >
             <Plus className="h-4 w-4" />
             Plan New Trip
           </Link>
         </div>
 
-        {/* ─── Filter tabs ─── */}
-        <div className="mb-8 flex flex-wrap gap-2">
+        {/* ─── Filter tabs — horizontal scroll on narrow screens ─── */}
+        <div className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:mb-8 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
           {FILTER_TABS.map((tab) => {
             const isActive = activeFilter === tab.id;
             return (
@@ -282,7 +282,7 @@ export default function MyTripsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveFilter(tab.id)}
-                className={`cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`min-h-10 shrink-0 cursor-pointer rounded-full px-3.5 py-2 text-sm font-medium transition-colors sm:px-4 ${
                   isActive
                     ? "bg-[#0F172A] text-white shadow-sm"
                     : "border border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#CBD5E1] hover:text-[#0F172A]"
@@ -303,13 +303,13 @@ export default function MyTripsPage() {
 
         {/* ─── Loading skeleton grid ─── */}
         {loading && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className="overflow-hidden rounded-xl border border-[#E2E8F0]/60 bg-white shadow-md"
               >
-                <div className="h-[200px] animate-pulse bg-[#E2E8F0]" />
+                <div className="aspect-[16/10] animate-pulse bg-[#E2E8F0] sm:aspect-auto sm:h-[200px]" />
                 <div className="space-y-3 p-4">
                   <div className="h-5 w-2/3 animate-pulse rounded bg-[#E2E8F0]" />
                   <div className="h-4 w-1/2 animate-pulse rounded bg-[#E2E8F0]" />
@@ -322,19 +322,19 @@ export default function MyTripsPage() {
 
         {/* ─── Empty state ─── */}
         {!loading && !error && trips.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <span className="text-8xl" role="img" aria-label="Map">
+          <div className="flex flex-col items-center justify-center px-2 py-14 text-center sm:py-20">
+            <span className="text-6xl sm:text-8xl" role="img" aria-label="Map">
               🗺️
             </span>
-            <h2 className="mt-6 text-2xl font-bold text-[#0F172A]">
+            <h2 className="mt-5 text-xl font-bold text-[#0F172A] sm:mt-6 sm:text-2xl">
               No trips planned yet
             </h2>
-            <p className="mt-2 max-w-sm text-[#64748B]">
+            <p className="mt-2 max-w-sm text-sm text-[#64748B] sm:text-base">
               Start planning your first AI adventure
             </p>
             <Link
               href="/"
-              className="mt-8 inline-flex items-center gap-2 rounded-lg bg-[#F97316] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
+              className="mt-6 inline-flex min-h-11 w-full max-w-xs items-center justify-center gap-2 rounded-lg bg-[#F97316] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] sm:mt-8 sm:w-auto"
             >
               Plan Your First Trip →
             </Link>
@@ -346,8 +346,8 @@ export default function MyTripsPage() {
           !error &&
           trips.length > 0 &&
           filteredTrips.length === 0 && (
-            <div className="rounded-xl border border-[#E2E8F0] bg-white px-6 py-12 text-center shadow-sm">
-              <p className="text-[#64748B]">
+            <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-10 text-center shadow-sm sm:px-6 sm:py-12">
+              <p className="text-sm text-[#64748B] sm:text-base">
                 No trips in this category yet.
               </p>
             </div>
@@ -355,7 +355,7 @@ export default function MyTripsPage() {
 
         {/* ─── Trip cards grid ─── */}
         {!loading && filteredTrips.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {filteredTrips.map((trip) => (
               <TripGridCard
                 key={trip.id}
@@ -387,24 +387,24 @@ export default function MyTripsPage() {
             maxLength={120}
             autoFocus
             placeholder="e.g. Summer in Manali"
-            className="mt-2 w-full rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm text-[#0F172A] outline-none focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+            className="mt-2 w-full rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-base text-[#0F172A] outline-none focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 sm:py-2.5 sm:text-sm"
           />
           {renameError && (
             <p className="mt-2 text-sm text-red-600">{renameError}</p>
           )}
-          <div className="mt-5 flex justify-end gap-3">
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <button
               type="button"
               onClick={closeRename}
               disabled={renameSaving}
-              className="cursor-pointer rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60"
+              className="min-h-11 cursor-pointer rounded-xl border border-[#E2E8F0] px-4 py-2.5 text-sm font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60 sm:min-h-0 sm:py-2"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={renameSaving || !renameValue.trim()}
-              className="cursor-pointer rounded-xl bg-[#F97316] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-11 cursor-pointer rounded-xl bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:py-2"
             >
               {renameSaving ? "Saving..." : "Save"}
             </button>
@@ -454,14 +454,20 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
     };
   }, [trip.destination, draft]);
 
+  const vibeShort =
+    typeof trip.vibe === "string" && trip.vibe.length > 42
+      ? `${trip.vibe.slice(0, 40)}…`
+      : trip.vibe;
+  const isEditor = trip._role === "editor";
+
   return (
     <article className="group overflow-hidden rounded-xl border border-[#E2E8F0]/60 bg-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
       {/* ─── Cover image area ─── */}
-      <div className="relative h-[200px] w-full overflow-hidden bg-[#E2E8F0]">
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#E2E8F0] sm:aspect-auto sm:h-[200px]">
         {draft ? (
           /* Draft placeholder — dashed border style from reference */
           <div className="flex h-full w-full flex-col items-center justify-center border-b border-dashed border-[#CBD5E1] bg-[#F1F5F9]">
-            <Pencil className="h-10 w-10 text-[#94A3B8]" strokeWidth={1.5} />
+            <Pencil className="h-8 w-8 text-[#94A3B8] sm:h-10 sm:w-10" strokeWidth={1.5} />
             <span className="mt-2 text-xs font-medium text-[#64748B]">
               Draft — no cover yet
             </span>
@@ -478,20 +484,27 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
           />
         )}
 
-        {/* AI Crafted badge — top left */}
-        {!draft && (
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-[#0F172A]/85 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-            <Sparkles className="h-3 w-3 text-[#F97316]" />
-            AI Crafted
-          </span>
-        )}
+        {/* Badges — top left */}
+        <div className="absolute top-2.5 left-2.5 flex max-w-[70%] flex-wrap gap-1.5 sm:top-3 sm:left-3">
+          {!draft && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#0F172A]/85 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm sm:px-2.5 sm:text-[11px]">
+              <Sparkles className="h-3 w-3 text-[#F97316]" />
+              AI Crafted
+            </span>
+          )}
+          {isEditor && (
+            <span className="inline-flex items-center rounded-full bg-[#F97316]/95 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm sm:text-[11px]">
+              Shared
+            </span>
+          )}
+        </div>
 
         {/* Rename + delete icon buttons — top right */}
-        <div className="absolute top-3 right-3 flex gap-2">
+        <div className="absolute top-2.5 right-2.5 flex gap-1.5 sm:top-3 sm:right-3 sm:gap-2">
           <button
             type="button"
             onClick={() => onRename(trip)}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white sm:h-8 sm:w-8"
             aria-label={`Rename ${destination}`}
           >
             ✏️
@@ -500,7 +513,7 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
             type="button"
             onClick={() => onDelete(trip.id, destination)}
             disabled={deleting}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white disabled:opacity-60"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-base shadow-sm transition-colors hover:bg-white disabled:opacity-60 sm:h-8 sm:w-8"
             aria-label={`Delete ${destination}`}
           >
             🗑️
@@ -509,13 +522,15 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
       </div>
 
       {/* ─── Card body ─── */}
-      <div className="p-4">
+      <div className="p-3.5 sm:p-4">
         {/* Title + budget row */}
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-xl font-bold text-[#0F172A]">{destination}</h2>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+          <h2 className="line-clamp-2 text-lg font-bold text-[#0F172A] sm:text-xl">
+            {destination}
+          </h2>
           {!draft && (
             <span className="shrink-0 text-sm font-bold text-[#C2410C]">
-              {budget.length > 18 ? `${budget.slice(0, 16)}…` : budget}
+              {budget.length > 22 ? `${budget.slice(0, 20)}…` : budget}
             </span>
           )}
           {draft && (
@@ -526,20 +541,23 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
         </div>
 
         {/* Days + vibe badges */}
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2.5 flex flex-wrap gap-2 sm:mt-3">
           <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-xs font-medium text-[#0F172A]">
             {trip.days} Days
           </span>
-          {trip.vibe && (
-            <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-xs font-medium text-[#64748B]">
-              {trip.vibe}
+          {vibeShort && (
+            <span
+              className="max-w-full truncate rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-xs font-medium text-[#64748B]"
+              title={trip.vibe}
+            >
+              {vibeShort}
             </span>
           )}
         </div>
 
         {/* Budget detail line */}
         {!draft && (
-          <p className="mt-2 text-sm text-[#64748B]">{budget}</p>
+          <p className="mt-2 truncate text-sm text-[#64748B]">{budget}</p>
         )}
 
         {/* Saved date */}
@@ -551,14 +569,14 @@ function TripGridCard({ trip, deleting, onDelete, onRename }) {
         {draft ? (
           <Link
             href="/"
-            className="mt-4 flex w-full items-center justify-center rounded-lg border border-[#E2E8F0] bg-white py-2.5 text-sm font-semibold text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
+            className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg border border-[#E2E8F0] bg-white py-2.5 text-sm font-semibold text-[#0F172A] transition-colors hover:bg-[#F8FAFC] sm:mt-4"
           >
             Continue Planning
           </Link>
         ) : (
           <Link
             href={`/trip/${trip.id}`}
-            className="mt-4 flex w-full items-center justify-center rounded-lg bg-[#0F172A] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B]"
+            className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg bg-[#0F172A] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B] sm:mt-4"
           >
             View Itinerary →
           </Link>
