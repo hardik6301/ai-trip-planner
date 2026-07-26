@@ -5,8 +5,16 @@
  * Separate from view-only Share (/trip/[id]).
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { Copy, Link2, Loader2, RefreshCw, ShieldOff, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Copy,
+  Info,
+  Link2,
+  Loader2,
+  RefreshCw,
+  ShieldOff,
+  Trash2,
+} from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 export default function EditInviteControls({ tripId }) {
@@ -16,6 +24,19 @@ export default function EditInviteControls({ tripId }) {
   const [removingId, setRemovingId] = useState(null);
   const [editUrl, setEditUrl] = useState(null);
   const [editors, setEditors] = useState([]);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const infoRef = useRef(null);
+
+  useEffect(() => {
+    if (!infoOpen) return;
+    function handleClickOutside(e) {
+      if (infoRef.current && !infoRef.current.contains(e.target)) {
+        setInfoOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [infoOpen]);
 
   const load = useCallback(async () => {
     if (!tripId) return;
@@ -118,14 +139,30 @@ export default function EditInviteControls({ tripId }) {
   return (
     <div className="space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
       <div>
-        <div className="flex items-center gap-2 text-xs font-semibold text-[#0F172A]">
+        <div
+          ref={infoRef}
+          className="relative flex items-center gap-1.5 text-xs font-semibold text-[#0F172A]"
+        >
           <Link2 className="h-3.5 w-3.5 text-[#F97316]" />
-          Edit invite link
+          <span>Edit invite link</span>
+          <button
+            type="button"
+            onClick={() => setInfoOpen((o) => !o)}
+            className="cursor-pointer rounded-full p-0.5 text-[#94A3B8] transition-colors hover:bg-[#E2E8F0] hover:text-[#64748B]"
+            aria-label="About edit invite links"
+            aria-expanded={infoOpen}
+          >
+            <Info className="h-3.5 w-3.5" />
+          </button>
+          {infoOpen && (
+            <div className="absolute top-full left-0 z-20 mt-2 w-[220px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-[0_12px_40px_rgba(15,23,42,0.12)]">
+              <p className="text-[11px] leading-snug text-[#64748B]">
+                Separate from Share (view-only). Revoke/rotate only affects the
+                link — use Remove below to kick an editor.
+              </p>
+            </div>
+          )}
         </div>
-        <p className="mt-1 text-[10px] leading-snug text-[#64748B]">
-          Separate from Share (view-only). Revoke/rotate only affects the link —
-          use Remove below to kick an editor.
-        </p>
 
         {loading ? (
           <div className="mt-2 flex items-center gap-2 text-[11px] text-[#94A3B8]">
