@@ -52,9 +52,11 @@ import {
 } from "@/utils/shareTrip";
 import { downloadTripPdf } from "@/utils/downloadTripPdf";
 import { getGoogleMapsLink } from "@/utils/googleMaps";
+import { formatMoney, parseBudgetRange } from "@/utils/expenseBudget";
 import Modal from "@/components/ui/Modal";
 import { useTripLiveData } from "@/hooks/useTripLiveData";
 import { currencySymbol, parseTripVibe } from "@/lib/destinationLive";
+import { createClient } from "@/lib/supabase/client";
 
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80";
@@ -283,7 +285,7 @@ function parseAmount(str) {
   return match ? parseFloat(match[0]) : null;
 }
 
-/** Sum all activity costs and compare against the trip's budget estimate */
+/** AI activity-cost estimate vs budget (used before any expenses are logged) */
 function computePlannedSpend(days, budgetEstimate) {
   let total = 0;
   let found = false;
@@ -293,27 +295,46 @@ function computePlannedSpend(days, budgetEstimate) {
     PERIODS.forEach((p) => {
       const range = parseCostRange(day[p.key]?.cost);
       if (!range) return;
-      // Midpoint keeps ranges like "฿200-500" from under/over-counting
       total += (range.low + range.high) / 2;
       found = true;
       if (!symbol && range.symbol) symbol = range.symbol;
     });
   });
 
-  // Lower bound of the estimate, ignoring parenthetical notes like "(excludes flights)"
-  const budgetCore = String(budgetEstimate || "").replace(/\([^)]*\)/g, "");
-  const budgetLow =
-    parseAmount(budgetCore.split(/[-–—]/)[0]) ?? parseAmount(budgetCore);
-
-  if (!found || !budgetLow) {
-    return { title: "—", percentage: null };
+  const budget = parseBudgetRange(budgetEstimate);
+  if (!found || !budget.low) {
+    return { title: "—", percentage: null, caption: "of estimated budget" };
   }
 
-  const percentage = Math.min(100, Math.round((total / budgetLow) * 100));
-  const locale = symbol === "₹" ? "en-IN" : "en-US";
+  const percentage = Math.min(100, Math.round((total / budget.low) * 100));
   return {
-    title: `${symbol}${total.toLocaleString(locale)}`,
+    title: formatMoney(total, symbol || budget.symbol),
     percentage,
+    caption: "of estimated budget",
+  };
+}
+
+/** Logged expenses vs estimated budget range — drives the live progress bar */
+function computeLoggedSpend(totalSpent, budgetEstimate, metaBudget) {
+  const budget = parseBudgetRange(budgetEstimate, metaBudget);
+  if (!budget.low) {
+    return {
+      title: formatMoney(totalSpent, budget.symbol),
+      percentage: null,
+      caption: "log expenses to track budget",
+      label: "Trip Spend",
+    };
+  }
+
+  const percentage = Math.min(
+    100,
+    Math.round((totalSpent / budget.low) * 100)
+  );
+  return {
+    title: formatMoney(totalSpent, budget.symbol),
+    percentage,
+    caption: `of ${budget.label}`,
+    label: "Trip Spend",
   };
 }
 
@@ -355,7 +376,7 @@ export default function TripItineraryView({
   const budget = tripData.totalBudgetEstimate || tripMeta?.budget || "₹42,500";
   const budgetCap = tripMeta?.budget || "₹50,000";
   const budgetDisplay = formatBudgetDisplay(budget, budgetCap, vibeShort);
-  const plannedSpend = computePlannedSpend(
+  const aiPlannedSpend = computePlannedSpend(
     tripData.days,
     tripData.totalBudgetEstimate || tripMeta?.budget
   );
@@ -363,6 +384,9 @@ export default function TripItineraryView({
   const [activeDay, setActiveDay] = useState(1);
   const [budgetInfoOpen, setBudgetInfoOpen] = useState(false);
   const budgetInfoRef = useRef(null);
+  // Live logged expenses for Pro owners (Expense Tracker)
+  const [loggedTotal, setLoggedTotal] = useState(null);
+  const trackLiveSpend = Boolean(expensesHref && tripId);
   const [expandedDays, setExpandedDays] = useState(() => {
     const initial = new Set();
     tripData.days?.forEach((d, i) => {
@@ -422,6 +446,65 @@ export default function TripItineraryView({
       cancelled = true;
     };
   }, [tripData.destination]);
+
+  // Live Trip Spend bar — sum logged expenses for this trip (Pro tracker)
+  useEffect(() => {
+    if (!trackLiveSpend) {
+      setLoggedTotal(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadLoggedSpend() {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("trip_id", tripId);
+
+      if (cancelled) return;
+      if (error) {
+        setLoggedTotal(0);
+        return;
+      }
+      const total = (data ?? []).reduce(
+        (sum, row) => sum + Number(row.amount || 0),
+        0
+      );
+      setLoggedTotal(total);
+    }
+
+    loadLoggedSpend();
+
+    function onFocus() {
+      loadLoggedSpend();
+    }
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [trackLiveSpend, tripId]);
+
+  const spendCard = trackLiveSpend
+    ? loggedTotal == null
+      ? {
+          label: "Trip Spend",
+          title: "…",
+          percentage: null,
+          caption: "loading logged expenses",
+        }
+      : computeLoggedSpend(
+          loggedTotal,
+          tripData.totalBudgetEstimate || tripMeta?.budget,
+          tripMeta?.budget
+        )
+    : {
+        ...aiPlannedSpend,
+        label: "Planned Spend",
+        caption: aiPlannedSpend.caption || "of estimated budget",
+      };
 
   const tripVibe = tripVibeParsed;
 
@@ -900,10 +983,10 @@ export default function TripItineraryView({
           />
           <StatCard
             emoji="💰"
-            label="Planned Spend"
-            title={plannedSpend.title}
-            progress={plannedSpend.percentage}
-            progressCaption="of estimated budget"
+            label={spendCard.label}
+            title={spendCard.title}
+            progress={spendCard.percentage}
+            progressCaption={spendCard.caption}
           />
         </div>
 

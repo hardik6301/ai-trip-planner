@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Travora Expense Tracker — Pro-only premium dashboard for a saved trip.
- * Intentionally dark themed (navy/black + orange) regardless of the app theme.
+ * Travora Expense Tracker — Pro-only dashboard for a saved trip.
+ * Log amount / category / note against a day or activity; live totals vs budget.
  * Route: /trip/[id]/expenses
  */
 
@@ -27,9 +27,14 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchUserProStatus, isProUser } from "@/lib/userPlan";
 import { capitalizeDestination } from "@/utils/formatTrip";
 import { downloadExpensesPdf } from "@/utils/downloadExpensesPdf";
+import {
+  formatMoney,
+  formatMoneyCompact,
+  getDayActivityOptions,
+  parseBudgetRange,
+} from "@/utils/expenseBudget";
 import ProBadge from "@/components/ui/ProBadge";
 
-// Expense categories — colors aligned with the Stitch donut chart
 const CATEGORIES = [
   { value: "Food & Drinks", emoji: "🍽️", color: "#60A5FA", Icon: UtensilsCrossed },
   { value: "Hotel", emoji: "🏨", color: "#38BDF8", Icon: Bed },
@@ -40,41 +45,12 @@ const CATEGORIES = [
   { value: "Other", emoji: "📦", color: "#94A3B8", Icon: Package },
 ];
 
-/** Look up a category config, falling back to "Other" */
 function categoryMeta(name) {
   return CATEGORIES.find((c) => c.value === name) ?? CATEGORIES[CATEGORIES.length - 1];
 }
 
-/** Extract the first numeric amount from a budget string ("₹40,000 – ₹55,000") */
-function parseAmount(str) {
-  if (!str) return null;
-  const cleaned = String(str).replace(/,/g, "");
-  const match = cleaned.match(/\d+(?:\.\d+)?/);
-  return match ? parseFloat(match[0]) : null;
-}
-
-/** Lower bound of the trip's budget estimate, ignoring notes in parentheses */
-function parseTripBudget(trip) {
-  const source = trip?.itinerary?.totalBudgetEstimate || trip?.budget;
-  const core = String(source || "").replace(/\([^)]*\)/g, "");
-  return parseAmount(core.split(/[-–—]/)[0]) ?? parseAmount(core);
-}
-
-/** "₹12,400" — full rupee format */
-function money(n) {
-  return `₹${Number(n || 0).toLocaleString("en-IN")}`;
-}
-
-/** "₹32k" — compact format for the donut center */
-function moneyCompact(n) {
-  const v = Number(n || 0);
-  if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
-  if (v >= 1000) return `₹${Math.round(v / 1000)}k`;
-  return `₹${v}`;
-}
-
-/** "Oct 12, 2024" from a YYYY-MM-DD date string */
 function formatDate(dateStr) {
+  if (!dateStr) return "";
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -82,7 +58,6 @@ function formatDate(dateStr) {
   });
 }
 
-/** "2:00 PM" from an ISO timestamp */
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -90,7 +65,6 @@ function formatTime(iso) {
   });
 }
 
-/** Today's date as YYYY-MM-DD for the date input default */
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -99,51 +73,45 @@ export default function ExpenseTrackerPage() {
   const { id: tripId } = useParams();
   const router = useRouter();
 
-  // Page load state: "loading" | "ready" | "not_found" | "error"
   const [pageState, setPageState] = useState("loading");
   const [trip, setTrip] = useState(null);
   const [expenses, setExpenses] = useState([]);
 
-  // Add-expense form fields
   const [category, setCategory] = useState(CATEGORIES[0].value);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [expenseDate, setExpenseDate] = useState(todayStr());
+  const [dayNumber, setDayNumber] = useState("");
+  const [activityKey, setActivityKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // AI insight state
   const [insight, setInsight] = useState("");
   const [insightLoading, setInsightLoading] = useState(false);
 
-  // ── Load user (Pro gate), trip, and expenses ──
   useEffect(() => {
     if (!tripId) return;
     const supabase = createClient();
 
     async function load() {
-      // Resolve the logged-in user
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      // Not signed in → send to login
       if (!user) {
         router.replace("/auth/login");
         return;
       }
 
-      // Pro-only page — free users go to pricing
       const { isPro, profile } = await fetchUserProStatus(supabase, user.id);
       if (!isPro && !isProUser(user, profile)) {
         router.replace("/pricing");
         return;
       }
 
-      // Fetch the trip (RLS restricts to the owner)
       const { data: tripRow, error: tripError } = await supabase
         .from("trips")
-        .select("id, user_id, destination, budget, itinerary")
+        .select("id, user_id, destination, budget, itinerary, days")
         .eq("id", tripId)
         .maybeSingle();
 
@@ -157,12 +125,10 @@ export default function ExpenseTrackerPage() {
       }
       setTrip(tripRow);
 
-      // Fetch this trip's expenses, oldest date first
       const { data: rows, error: expError } = await supabase
         .from("expenses")
         .select("*")
         .eq("trip_id", tripId)
-        .order("expense_date", { ascending: true })
         .order("created_at", { ascending: true });
 
       if (expError) {
@@ -170,22 +136,57 @@ export default function ExpenseTrackerPage() {
         return;
       }
       setExpenses(rows ?? []);
+
+      const days = tripRow.itinerary?.days;
+      if (Array.isArray(days) && days.length > 0) {
+        setDayNumber(String(days[0].day ?? 1));
+      }
+
       setPageState("ready");
     }
 
     load();
   }, [tripId, router]);
 
-  // ── Derived totals ──
+  const itineraryDays = useMemo(() => {
+    const days = trip?.itinerary?.days;
+    return Array.isArray(days) ? days : [];
+  }, [trip]);
+
+  const selectedDay = useMemo(() => {
+    if (!dayNumber) return null;
+    return (
+      itineraryDays.find((d) => String(d.day) === String(dayNumber)) || null
+    );
+  }, [dayNumber, itineraryDays]);
+
+  const activityOptions = useMemo(
+    () => getDayActivityOptions(selectedDay),
+    [selectedDay]
+  );
+
+  useEffect(() => {
+    setActivityKey("");
+  }, [dayNumber]);
+
+  const budgetRange = useMemo(
+    () => parseBudgetRange(trip, trip?.budget),
+    [trip]
+  );
+  const symbol = budgetRange.symbol;
+  const money = (n) => formatMoney(n, symbol);
+  const moneyCompact = (n) => formatMoneyCompact(n, symbol);
+
   const totalSpent = useMemo(
     () => expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
     [expenses]
   );
-  const budget = useMemo(() => parseTripBudget(trip), [trip]);
-  const pctUsed = budget ? Math.min(100, Math.round((totalSpent / budget) * 100)) : null;
-  const left = budget ? Math.max(0, budget - totalSpent) : null;
+  const budgetLow = budgetRange.low;
+  const pctUsed = budgetLow
+    ? Math.min(100, Math.round((totalSpent / budgetLow) * 100))
+    : null;
+  const left = budgetLow != null ? Math.max(0, budgetLow - totalSpent) : null;
 
-  // Per-category totals (only categories with spend), largest first
   const breakdown = useMemo(() => {
     const map = new Map();
     expenses.forEach((e) => {
@@ -196,7 +197,6 @@ export default function ExpenseTrackerPage() {
       .sort((a, b) => b.total - a.total);
   }, [expenses]);
 
-  // CSS conic-gradient string for the donut chart
   const donutGradient = useMemo(() => {
     if (!totalSpent) return "conic-gradient(#1E2A44 0deg 360deg)";
     let angle = 0;
@@ -208,25 +208,57 @@ export default function ExpenseTrackerPage() {
     return `conic-gradient(${stops.join(", ")})`;
   }, [breakdown, totalSpent]);
 
-  // Expenses grouped by date → [{ label, dateLabel, total, items }]
+  /** Group by itinerary day when linked; otherwise by calendar date */
   const dayGroups = useMemo(() => {
-    const map = new Map();
-    expenses.forEach((e) => {
-      if (!map.has(e.expense_date)) map.set(e.expense_date, []);
-      map.get(e.expense_date).push(e);
-    });
-    return [...map.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, items], i) => ({
-        label: `Day ${i + 1}`,
-        date,
-        dateLabel: formatDate(date),
-        total: items.reduce((s, e) => s + Number(e.amount || 0), 0),
-        items,
-      }));
-  }, [expenses]);
+    const byDay = new Map();
+    const unassigned = [];
 
-  // ── AI insight: cached per trip + total so it isn't regenerated every render ──
+    expenses.forEach((e) => {
+      if (e.day_number != null) {
+        const key = Number(e.day_number);
+        if (!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push(e);
+      } else {
+        unassigned.push(e);
+      }
+    });
+
+    const groups = [...byDay.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([day, items]) => {
+        const itineraryDay = itineraryDays.find((d) => Number(d.day) === day);
+        return {
+          key: `day-${day}`,
+          label: `Day ${day}`,
+          dateLabel: itineraryDay?.theme || formatDate(items[0]?.expense_date),
+          total: items.reduce((s, e) => s + Number(e.amount || 0), 0),
+          items,
+        };
+      });
+
+    if (unassigned.length) {
+      const byDate = new Map();
+      unassigned.forEach((e) => {
+        const d = e.expense_date || "unknown";
+        if (!byDate.has(d)) byDate.set(d, []);
+        byDate.get(d).push(e);
+      });
+      [...byDate.entries()]
+        .sort(([a], [b]) => String(a).localeCompare(String(b)))
+        .forEach(([date, items]) => {
+          groups.push({
+            key: `date-${date}`,
+            label: "Other",
+            dateLabel: formatDate(date) || "No date",
+            total: items.reduce((s, e) => s + Number(e.amount || 0), 0),
+            items,
+          });
+        });
+    }
+
+    return groups;
+  }, [expenses, itineraryDays]);
+
   useEffect(() => {
     if (pageState !== "ready" || totalSpent <= 0) return;
 
@@ -244,9 +276,11 @@ export default function ExpenseTrackerPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         total: totalSpent,
-        budget,
+        budget: budgetLow,
         destination: trip?.destination,
-        breakdown: breakdown.map((c) => `${c.name} ₹${c.total}`).join(", "),
+        breakdown: breakdown
+          .map((c) => `${c.name} ${money(c.total)}`)
+          .join(", "),
       }),
     })
       .then((r) => r.json())
@@ -255,9 +289,7 @@ export default function ExpenseTrackerPage() {
         setInsight(data.insight);
         sessionStorage.setItem(cacheKey, data.insight);
       })
-      .catch(() => {
-        /* insight is a nice-to-have — fail silently */
-      })
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setInsightLoading(false);
       });
@@ -268,12 +300,10 @@ export default function ExpenseTrackerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageState, totalSpent, tripId]);
 
-  // ── Save a new expense to Supabase ──
   async function handleAddExpense(e) {
     e.preventDefault();
     setFormError("");
 
-    // Validate the amount before hitting the database
     const value = parseFloat(amount);
     if (!value || value <= 0) {
       setFormError("Enter a valid amount greater than 0.");
@@ -286,19 +316,51 @@ export default function ExpenseTrackerPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Insert and get the saved row back (id, created_at)
-    const { data: row, error } = await supabase
+    const dayNum = dayNumber ? Number(dayNumber) : null;
+    const actOpt = activityOptions.find((o) => o.value === activityKey);
+    const payload = {
+      trip_id: tripId,
+      user_id: user.id,
+      category,
+      amount: value,
+      note: note.trim() || null,
+      expense_date: expenseDate || todayStr(),
+      day_number: Number.isFinite(dayNum) ? dayNum : null,
+      activity_key: activityKey || null,
+      activity_label: actOpt?.activityLabel || null,
+    };
+
+    let { data: row, error } = await supabase
       .from("expenses")
-      .insert({
+      .insert(payload)
+      .select()
+      .single();
+
+    // Graceful fallback if migration 013 not applied yet
+    if (
+      error &&
+      /day_number|activity_key|activity_label|column/i.test(error.message || "")
+    ) {
+      const legacy = {
         trip_id: tripId,
         user_id: user.id,
         category,
         amount: value,
-        note: note.trim() || null,
+        note: [
+          dayNum ? `Day ${dayNum}` : null,
+          actOpt?.activityLabel || null,
+          note.trim() || null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || null,
         expense_date: expenseDate || todayStr(),
-      })
-      .select()
-      .single();
+      };
+      ({ data: row, error } = await supabase
+        .from("expenses")
+        .insert(legacy)
+        .select()
+        .single());
+    }
 
     setSaving(false);
 
@@ -307,20 +369,12 @@ export default function ExpenseTrackerPage() {
       return;
     }
 
-    // Append and keep the list sorted by date then time
-    setExpenses((prev) =>
-      [...prev, row].sort(
-        (a, b) =>
-          a.expense_date.localeCompare(b.expense_date) ||
-          a.created_at.localeCompare(b.created_at)
-      )
-    );
-    // Reset the quick-entry fields (keep category and date for fast repeat entry)
+    setExpenses((prev) => [...prev, row]);
     setAmount("");
     setNote("");
+    setActivityKey("");
   }
 
-  // ── Delete an expense (optimistic, restore on failure) ──
   async function handleDelete(expenseId) {
     const previous = expenses;
     setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
@@ -332,17 +386,16 @@ export default function ExpenseTrackerPage() {
     }
   }
 
-  // ── Export the current expense list as a PDF ──
   function handleExportPdf() {
     downloadExpensesPdf({
       destination: capitalizeDestination(trip?.destination || "Trip"),
       dayGroups,
       totalSpent,
-      budget,
+      budget: budgetLow,
+      currencySymbol: symbol,
     });
   }
 
-  // ── Loading state ──
   if (pageState === "loading") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#0A0F1E] text-[#8B95AB]">
@@ -352,7 +405,6 @@ export default function ExpenseTrackerPage() {
     );
   }
 
-  // ── Error / not found states ──
   if (pageState === "not_found" || pageState === "error") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0A0F1E] px-5 text-center">
@@ -379,10 +431,8 @@ export default function ExpenseTrackerPage() {
   return (
     <div className="min-h-screen bg-[#0A0F1E] pb-16 font-sans">
       <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6">
-        {/* ─── Header ─── */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            {/* Breadcrumb */}
             <nav className="flex items-center gap-1 text-[11px] font-semibold tracking-wide text-[#8B95AB] uppercase">
               <Link href="/my-trips" className="transition-colors hover:text-white">
                 My Trips
@@ -401,9 +451,12 @@ export default function ExpenseTrackerPage() {
               Expense Tracker
               <ProBadge />
             </h1>
+            <p className="mt-1.5 max-w-lg text-sm text-[#8B95AB]">
+              Log what you actually spend per day or activity. Your trip page
+              progress bar updates live against the estimated budget.
+            </p>
           </div>
 
-          {/* Header actions */}
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -424,13 +477,10 @@ export default function ExpenseTrackerPage() {
           </div>
         </div>
 
-        {/* ─── Content grid: sidebar (1/3) + main (2/3) ─── */}
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          {/* ══ LEFT SIDEBAR ══ */}
           <div className="space-y-6 lg:col-span-1">
-            {/* Total Spent card */}
             <div className="rounded-2xl border border-[#26314B] bg-[#111A2E] p-5">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold tracking-[0.12em] text-[#F97316] uppercase">
                     Total Spent
@@ -439,17 +489,16 @@ export default function ExpenseTrackerPage() {
                     {money(totalSpent)}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="min-w-0 text-right">
                   <p className="text-[10px] font-bold tracking-[0.12em] text-[#F97316] uppercase">
-                    Budget
+                    Est. Budget
                   </p>
                   <p className="mt-1 text-sm font-semibold text-white">
-                    {budget ? money(budget) : "—"}
+                    {budgetRange.label}
                   </p>
                 </div>
               </div>
 
-              {/* Spend progress against budget */}
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#1E2A44]">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-[#F97316] to-[#FDBA74] transition-all duration-500"
@@ -458,15 +507,16 @@ export default function ExpenseTrackerPage() {
               </div>
               <div className="mt-2 flex items-center justify-between text-xs">
                 <span className="text-[#8B95AB]">
-                  {pctUsed != null ? `${pctUsed}% used` : "No budget estimate"}
+                  {pctUsed != null ? `${pctUsed}% of low estimate` : "No budget estimate"}
                 </span>
                 {left != null && (
-                  <span className="font-semibold text-[#F97316]">{money(left)} left</span>
+                  <span className="font-semibold text-[#F97316]">
+                    {money(left)} left
+                  </span>
                 )}
               </div>
             </div>
 
-            {/* Breakdown donut chart (pure CSS conic-gradient) */}
             <div className="rounded-2xl border border-[#26314B] bg-[#111A2E] p-5">
               <h3 className="text-lg font-bold text-white">Breakdown</h3>
 
@@ -477,7 +527,6 @@ export default function ExpenseTrackerPage() {
                   role="img"
                   aria-label="Spending breakdown by category"
                 >
-                  {/* Center hole with total */}
                   <div className="absolute inset-[22%] flex flex-col items-center justify-center rounded-full bg-[#111A2E]">
                     <span className="text-xl font-bold text-white">
                       {moneyCompact(totalSpent)}
@@ -489,7 +538,6 @@ export default function ExpenseTrackerPage() {
                 </div>
               </div>
 
-              {/* Category legend */}
               {breakdown.length > 0 ? (
                 <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
                   {breakdown.map((c) => (
@@ -512,11 +560,10 @@ export default function ExpenseTrackerPage() {
               )}
             </div>
 
-            {/* Travora AI Insight card */}
             <div className="rounded-2xl bg-[#F97316] p-5">
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg">
-                  ✨
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  <Sparkles className="h-4 w-4 text-white" />
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-white">Travora AI Insight</h3>
@@ -531,20 +578,67 @@ export default function ExpenseTrackerPage() {
             </div>
           </div>
 
-          {/* ══ RIGHT MAIN ══ */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Add New Expense form */}
             <form
               id="add-expense"
               onSubmit={handleAddExpense}
               className="scroll-mt-24 rounded-2xl border border-[#26314B] bg-[#111A2E] p-5 md:p-6"
             >
               <h2 className="text-xl font-bold text-white">Add New Expense</h2>
+              <p className="mt-1 text-xs text-[#8B95AB]">
+                Attach spend to a trip day, or drill into a specific activity.
+              </p>
 
-              <div className="mt-5 grid gap-4 sm:grid-cols-3">
-                {/* Category dropdown */}
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="exp-category" className="text-xs font-semibold text-[#8B95AB]">
+                  <label htmlFor="exp-day" className="text-xs font-semibold text-[#8B95AB]">
+                    Day
+                  </label>
+                  <select
+                    id="exp-day"
+                    value={dayNumber}
+                    onChange={(e) => setDayNumber(e.target.value)}
+                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white outline-none focus:border-[#F97316]"
+                  >
+                    <option value="">No specific day</option>
+                    {itineraryDays.map((d) => (
+                      <option key={d.day} value={String(d.day)}>
+                        Day {d.day}
+                        {d.theme ? ` — ${d.theme}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="exp-activity"
+                    className="text-xs font-semibold text-[#8B95AB]"
+                  >
+                    Activity
+                  </label>
+                  <select
+                    id="exp-activity"
+                    value={activityKey}
+                    onChange={(e) => setActivityKey(e.target.value)}
+                    disabled={!dayNumber}
+                    className="mt-1.5 w-full cursor-pointer rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white outline-none focus:border-[#F97316] disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {activityOptions.map((o) => (
+                      <option key={o.value || "whole"} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label
+                    htmlFor="exp-category"
+                    className="text-xs font-semibold text-[#8B95AB]"
+                  >
                     Category
                   </label>
                   <select
@@ -561,10 +655,12 @@ export default function ExpenseTrackerPage() {
                   </select>
                 </div>
 
-                {/* Amount input */}
                 <div>
-                  <label htmlFor="exp-amount" className="text-xs font-semibold text-[#8B95AB]">
-                    Amount (₹)
+                  <label
+                    htmlFor="exp-amount"
+                    className="text-xs font-semibold text-[#8B95AB]"
+                  >
+                    Amount ({symbol})
                   </label>
                   <input
                     id="exp-amount"
@@ -575,11 +671,11 @@ export default function ExpenseTrackerPage() {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
+                    required
                     className="mt-1.5 w-full rounded-xl border border-[#26314B] bg-[#0D1526] px-3 py-2.5 text-sm text-white placeholder-[#4B5570] outline-none focus:border-[#F97316]"
                   />
                 </div>
 
-                {/* Note input */}
                 <div>
                   <label htmlFor="exp-note" className="text-xs font-semibold text-[#8B95AB]">
                     Note
@@ -596,10 +692,9 @@ export default function ExpenseTrackerPage() {
                 </div>
               </div>
 
-              {/* Date row */}
               <div className="mt-4 max-w-xs">
                 <label htmlFor="exp-date" className="text-xs font-semibold text-[#8B95AB]">
-                  Date
+                  Date paid
                 </label>
                 <input
                   id="exp-date"
@@ -610,10 +705,8 @@ export default function ExpenseTrackerPage() {
                 />
               </div>
 
-              {/* Validation / save errors */}
               {formError && <p className="mt-3 text-sm text-red-400">{formError}</p>}
 
-              {/* Full-width save button — matches Stitch peach CTA */}
               <button
                 type="submit"
                 disabled={saving}
@@ -624,64 +717,73 @@ export default function ExpenseTrackerPage() {
               </button>
             </form>
 
-            {/* Expenses list grouped by day */}
             {dayGroups.length === 0 ? (
-              // Empty state
               <div className="rounded-2xl border border-dashed border-[#26314B] bg-[#111A2E]/50 px-6 py-14 text-center">
-                <p className="text-3xl">💸</p>
-                <p className="mt-3 text-sm font-semibold text-white">No expenses yet</p>
+                <p className="text-sm font-semibold text-white">No expenses yet</p>
                 <p className="mt-1 text-xs text-[#8B95AB]">
-                  Log your first expense above to start tracking your {destination} spend.
+                  Log your first expense above to start tracking your {destination}{" "}
+                  spend.
                 </p>
               </div>
             ) : (
               dayGroups.map((group) => (
-                <section key={group.date}>
-                  {/* Day section header */}
+                <section key={group.key}>
                   <div className="flex items-center gap-3 px-1">
                     <h3 className="text-lg font-bold text-white">{group.label}</h3>
-                    <span className="text-xs text-[#8B95AB]">{group.dateLabel}</span>
+                    <span className="truncate text-xs text-[#8B95AB]">
+                      {group.dateLabel}
+                    </span>
                     <div className="h-px flex-1 bg-[#26314B]" />
                     <span className="text-sm font-bold text-[#F97316]">
                       {money(group.total)}
                     </span>
                   </div>
 
-                  {/* Expense rows */}
                   <div className="mt-3 space-y-2.5">
                     {group.items.map((exp) => {
                       const meta = categoryMeta(exp.category);
                       const CatIcon = meta.Icon;
+                      const subtitle = [
+                        exp.activity_label
+                          ? exp.activity_label
+                          : exp.activity_key
+                            ? exp.activity_key
+                            : null,
+                        exp.category,
+                        formatTime(exp.created_at),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+
                       return (
                         <div
                           key={exp.id}
                           className="group flex items-center gap-4 rounded-2xl border border-[#26314B] bg-[#111A2E] px-4 py-3.5 transition-colors hover:border-[#3A4763]"
                         >
-                          {/* Category icon circle */}
                           <span
                             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                            style={{ backgroundColor: `${meta.color}22`, color: meta.color }}
+                            style={{
+                              backgroundColor: `${meta.color}22`,
+                              color: meta.color,
+                            }}
                             aria-hidden="true"
                           >
                             <CatIcon className="h-5 w-5" strokeWidth={1.75} />
                           </span>
 
-                          {/* Name + category/time */}
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-bold text-white">
-                              {exp.note || exp.category}
+                              {exp.note || exp.activity_label || exp.category}
                             </p>
-                            <p className="mt-0.5 text-xs text-[#8B95AB]">
-                              {exp.category} • {formatTime(exp.created_at)}
+                            <p className="mt-0.5 truncate text-xs text-[#8B95AB]">
+                              {subtitle}
                             </p>
                           </div>
 
-                          {/* Amount */}
                           <p className="shrink-0 text-base font-bold text-white">
                             {money(exp.amount)}
                           </p>
 
-                          {/* Delete */}
                           <button
                             type="button"
                             onClick={() => handleDelete(exp.id)}

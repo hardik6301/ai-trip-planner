@@ -22,9 +22,21 @@ function sanitize(text) {
     .trim();
 }
 
-/** Format a number as "Rs 1,234" (jsPDF Helvetica can't render ₹) */
-function money(amount) {
-  return `Rs ${Number(amount || 0).toLocaleString("en-IN")}`;
+/** ASCII-safe money for Helvetica (no ₹/฿ glyphs) */
+function money(amount, symbol = "₹") {
+  const code =
+    symbol === "₹"
+      ? "Rs"
+      : symbol === "฿"
+        ? "THB"
+        : symbol === "$"
+          ? "USD"
+          : symbol === "€"
+            ? "EUR"
+            : symbol === "£"
+              ? "GBP"
+              : symbol || "Rs";
+  return `${code} ${Number(amount || 0).toLocaleString("en-US")}`;
 }
 
 /**
@@ -33,12 +45,20 @@ function money(amount) {
  * @param {Array} opts.dayGroups — [{ label, dateLabel, total, items: [{ category, note, amount }] }]
  * @param {number} opts.totalSpent
  * @param {number|null} opts.budget
+ * @param {string} [opts.currencySymbol]
  */
-export function downloadExpensesPdf({ destination, dayGroups, totalSpent, budget }) {
+export function downloadExpensesPdf({
+  destination,
+  dayGroups,
+  totalSpent,
+  budget,
+  currencySymbol = "₹",
+}) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentWidth = pageWidth - PAGE_MARGIN * 2;
   let y = 0;
+  const fmt = (n) => money(n, currencySymbol);
 
   // Branded header band
   doc.setFillColor(...NAVY);
@@ -57,8 +77,8 @@ export function downloadExpensesPdf({ destination, dayGroups, totalSpent, budget
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   const summary = budget
-    ? `Total spent: ${money(totalSpent)}   |   Budget: ${money(budget)}   |   Left: ${money(Math.max(0, budget - totalSpent))}`
-    : `Total spent: ${money(totalSpent)}`;
+    ? `Total spent: ${fmt(totalSpent)}   |   Budget: ${fmt(budget)}   |   Left: ${fmt(Math.max(0, budget - totalSpent))}`
+    : `Total spent: ${fmt(totalSpent)}`;
   doc.text(summary, PAGE_MARGIN, y);
   y += 10;
 
@@ -76,9 +96,13 @@ export function downloadExpensesPdf({ destination, dayGroups, totalSpent, budget
     doc.setTextColor(...NAVY);
     doc.setFontSize(10.5);
     doc.setFont("helvetica", "bold");
-    doc.text(`${group.label}  ·  ${group.dateLabel}`, PAGE_MARGIN + 2, y);
+    doc.text(
+      sanitize(`${group.label}  ·  ${group.dateLabel}`),
+      PAGE_MARGIN + 2,
+      y
+    );
     doc.setTextColor(...ORANGE);
-    doc.text(money(group.total), pageWidth - PAGE_MARGIN - 2, y, { align: "right" });
+    doc.text(fmt(group.total), pageWidth - PAGE_MARGIN - 2, y, { align: "right" });
     y += 9;
 
     // Expense rows
@@ -90,14 +114,16 @@ export function downloadExpensesPdf({ destination, dayGroups, totalSpent, budget
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(...DARK);
-      const label = sanitize(item.note || item.category);
+      const label = sanitize(
+        item.note || item.activity_label || item.category
+      );
       doc.text(label.slice(0, 70), PAGE_MARGIN + 4, y);
       doc.setTextColor(...GRAY);
       doc.setFontSize(8.5);
       doc.text(sanitize(item.category), PAGE_MARGIN + 4, y + 4);
       doc.setTextColor(...DARK);
       doc.setFontSize(10);
-      doc.text(money(item.amount), pageWidth - PAGE_MARGIN - 2, y, { align: "right" });
+      doc.text(fmt(item.amount), pageWidth - PAGE_MARGIN - 2, y, { align: "right" });
       y += 10;
     });
 
