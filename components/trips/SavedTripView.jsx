@@ -35,6 +35,8 @@ export default function SavedTripView({ trip, ownerId }) {
     versionRef.current = itineraryVersion;
   }, [itineraryVersion]);
 
+  const canEditRef = useRef(false);
+
   const refreshTrip = useCallback(
     async ({ silent = true } = {}) => {
       try {
@@ -42,9 +44,20 @@ export default function SavedTripView({ trip, ownerId }) {
         if (!res.ok) return;
         const data = await res.json();
         const nextVersion = data.itineraryVersion ?? 1;
+        const nextCanEdit = Boolean(data.canEdit);
 
+        // Removed as editor while tab still open — downgrade to view-only
+        if (canEditRef.current && !nextCanEdit && data.role !== "owner") {
+          setAiChatOpen(false);
+          setConflictBanner(
+            "You no longer have edit access on this trip. You can still view it."
+          );
+          showToast("Edit access removed — view only now", "info");
+        }
+
+        canEditRef.current = nextCanEdit || data.role === "owner";
         setRole(data.role || "viewer");
-        setCanEdit(Boolean(data.canEdit));
+        setCanEdit(nextCanEdit);
         setIsOwner(data.role === "owner");
 
         if (nextVersion !== versionRef.current) {
@@ -54,7 +67,6 @@ export default function SavedTripView({ trip, ownerId }) {
             showToast("Trip refreshed with latest changes", "info");
           }
         } else if (data.trip) {
-          // Still sync role flags even if version unchanged
           setItineraryVersion(nextVersion);
         }
       } catch {
@@ -77,6 +89,7 @@ export default function SavedTripView({ trip, ownerId }) {
         if (owner) {
           setCanEdit(true);
           setRole("owner");
+          canEditRef.current = true;
         }
       } else {
         setIsPro(false);
