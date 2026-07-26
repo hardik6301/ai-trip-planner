@@ -87,33 +87,89 @@ const AI_FEATURES = [
 function isNonMonetaryCost(cost) {
   if (!cost) return true;
   const s = String(cost).trim().toLowerCase();
-  return s === "free" || s === "included" || s === "n/a";
+  return s === "free" || s === "included" || s === "n/a" || s === "—" || s === "-";
+}
+
+/** Drop parenthetical breakdowns so "฿300 (Wat Pho ฿200…)" stays ฿300 */
+function stripCostNotes(cost) {
+  return String(cost)
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*\]/g, " ")
+    .trim();
+}
+
+/**
+ * Parse AI cost strings into a numeric range.
+ * Handles "฿200-500", "approx ₹1,500", and ignores nested price notes.
+ */
+function parseCostRange(cost) {
+  if (isNonMonetaryCost(cost)) return null;
+
+  const core = stripCostNotes(cost);
+  if (!core) return null;
+
+  const symbolMatch = core.match(/[₹$€£¥฿]/);
+  const symbol = symbolMatch ? symbolMatch[0] : "";
+  const cleaned = core.replace(/,/g, "");
+
+  const rangeMatch = cleaned.match(
+    /(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)/
+  );
+  if (rangeMatch) {
+    const low = parseFloat(rangeMatch[1]);
+    const high = parseFloat(rangeMatch[2]);
+    if (Number.isNaN(low) || Number.isNaN(high)) return null;
+    return { low: Math.min(low, high), high: Math.max(low, high), symbol };
+  }
+
+  const single = cleaned.match(/(\d+(?:\.\d+)?)/);
+  if (!single) return null;
+  const n = parseFloat(single[1]);
+  if (Number.isNaN(n)) return null;
+  return { low: n, high: n, symbol };
 }
 
 function parseCostValue(cost) {
-  if (isNonMonetaryCost(cost)) return 0;
-  const n = parseFloat(String(cost).replace(/[^\d.]/g, ""));
-  return Number.isNaN(n) ? 0 : n;
+  const range = parseCostRange(cost);
+  if (!range) return 0;
+  return (range.low + range.high) / 2;
 }
 
 function getCurrencyPrefix(day) {
   for (const p of PERIODS) {
-    const cost = day[p.key]?.cost;
-    if (cost && !isNonMonetaryCost(cost)) {
-      const match = String(cost).match(/^[^\d]+/);
-      return match ? match[0].trim() : "₹";
-    }
+    const range = parseCostRange(day[p.key]?.cost);
+    if (range?.symbol) return range.symbol;
   }
   return "₹";
 }
 
+function formatMoneyAmount(amount, symbol) {
+  const locale = symbol === "₹" ? "en-IN" : "en-US";
+  return `${symbol}${Math.round(amount).toLocaleString(locale)}`;
+}
+
 function sumDayCost(day) {
-  const total = PERIODS.reduce(
-    (sum, p) => sum + parseCostValue(day[p.key]?.cost),
-    0
-  );
-  if (total === 0) return null;
-  return `${getCurrencyPrefix(day)}${total.toLocaleString("en-IN")}`;
+  let low = 0;
+  let high = 0;
+  let symbol = "";
+  let found = false;
+
+  for (const p of PERIODS) {
+    const range = parseCostRange(day[p.key]?.cost);
+    if (!range) continue;
+    found = true;
+    low += range.low;
+    high += range.high;
+    if (!symbol && range.symbol) symbol = range.symbol;
+  }
+
+  if (!found) return null;
+  if (!symbol) symbol = getCurrencyPrefix(day);
+
+  if (Math.round(low) === Math.round(high)) {
+    return formatMoneyAmount(low, symbol);
+  }
+  return `${formatMoneyAmount(low, symbol)} – ${formatMoneyAmount(high, symbol)}`;
 }
 
 function getDaySummary(day, destination) {
@@ -224,7 +280,7 @@ function formatBudgetDisplay(estimate, metaBudget, vibe) {
 /** Extract the first numeric amount from a cost/budget string ("₹1,500", "approx ฿300") */
 function parseAmount(str) {
   if (!str) return null;
-  const cleaned = String(str).replace(/,/g, "");
+  const cleaned = stripCostNotes(str).replace(/,/g, "");
   const match = cleaned.match(/\d+(?:\.\d+)?/);
   return match ? parseFloat(match[0]) : null;
 }
@@ -237,16 +293,12 @@ function computePlannedSpend(days, budgetEstimate) {
 
   days?.forEach((day) => {
     PERIODS.forEach((p) => {
-      const cost = day[p.key]?.cost;
-      const amount = parseAmount(cost);
-      if (amount != null) {
-        total += amount;
-        found = true;
-        if (!symbol) {
-          const sym = String(cost).match(/[₹$€£¥฿]/);
-          if (sym) symbol = sym[0];
-        }
-      }
+      const range = parseCostRange(day[p.key]?.cost);
+      if (!range) return;
+      // Midpoint keeps ranges like "฿200-500" from under/over-counting
+      total += (range.low + range.high) / 2;
+      found = true;
+      if (!symbol && range.symbol) symbol = range.symbol;
     });
   });
 
